@@ -8,8 +8,8 @@ import {
   Dimensions,
   Easing,
   Alert,
+  Platform,
 } from 'react-native';
-import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,13 +20,45 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   const phi2 = (lat2 * Math.PI) / 180;
   const dPhi = ((lat2 - lat1) * Math.PI) / 180;
   const dLambda = ((lon2 - lon1) * Math.PI) / 180;
-
   const a =
     Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
     Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) * Math.sin(dLambda / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
   return R * c;
+};
+
+// ---------------------------------------------------------------------------
+// Cross-platform location tracker
+// - On web (Chromium): uses navigator.geolocation
+// - On native: uses expo-location (imported lazily so web bundle never chokes)
+// ---------------------------------------------------------------------------
+const watchPositionCrossPlatform = async (onUpdate, onError) => {
+  if (Platform.OS === 'web') {
+    // Browser Geolocation API
+    if (!navigator?.geolocation) {
+      onError('Geolocation is not supported by this browser.');
+      return () => {};
+    }
+    const id = navigator.geolocation.watchPosition(
+      (pos) => onUpdate(pos.coords.latitude, pos.coords.longitude),
+      (err) => onError(err.message),
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  } else {
+    // Native: expo-location
+    const Location = await import('expo-location');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      onError('Location permission denied.');
+      return () => {};
+    }
+    const sub = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+      (loc) => onUpdate(loc.coords.latitude, loc.coords.longitude)
+    );
+    return () => sub.remove();
+  }
 };
 
 const GameScreen = ({ route }) => {
@@ -43,62 +75,53 @@ const GameScreen = ({ route }) => {
 
   const targetDistance = parseDistance(adventure?.distance);
   const [distanceWalked, setDistanceWalked] = useState(0);
+  const [locationStatus, setLocationStatus] = useState('Requesting location...');
   const lastPositionRef = useRef(null);
+
   const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState(null); // null | 'LEFT' | 'RIGHT'
+  const [result, setResult] = useState(null);
 
   const progress = Math.min(distanceWalked / targetDistance, 1);
 
   useEffect(() => {
     setDistanceWalked(0);
     lastPositionRef.current = null;
+    setLocationStatus('Requesting location...');
 
-    let locationSubscription = null;
+    let cleanup = () => {};
 
-    const startTracking = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'GPS tracking requires location permissions.');
-        return;
-      }
-
-      locationSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 5,
-        },
-        (location) => {
-          const { latitude, longitude } = location.coords;
-          if (lastPositionRef.current) {
-            const delta = getDistance(
-              lastPositionRef.current.latitude,
-              lastPositionRef.current.longitude,
-              latitude,
-              longitude
-            );
-            setDistanceWalked((prev) => prev + delta);
+    const start = async () => {
+      try {
+        cleanup = await watchPositionCrossPlatform(
+          (lat, lon) => {
+            setLocationStatus('Tracking');
+            if (lastPositionRef.current) {
+              const delta = getDistance(
+                lastPositionRef.current.latitude,
+                lastPositionRef.current.longitude,
+                lat,
+                lon
+              );
+              setDistanceWalked((prev) => prev + delta);
+            }
+            lastPositionRef.current = { latitude: lat, longitude: lon };
+          },
+          (errMsg) => {
+            setLocationStatus('Location unavailable: ' + errMsg);
           }
-          lastPositionRef.current = { latitude, longitude };
-        }
-      );
-    };
-
-    startTracking();
-
-    return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
+        );
+      } catch (e) {
+        setLocationStatus('Location error: ' + e.message);
       }
     };
+
+    start();
+    return () => { cleanup(); };
   }, [adventure?.id]);
 
+  // Arrow spin logic
   const rotationValue = useRef(new Animated.Value(0)).current;
-
-  // FIX: Track the last NORMALIZED landing angle (0 or 180) separately
-  // from the accumulated raw degrees. This lets us always compute the next
-  // target correctly regardless of how many full rotations have accumulated.
-  const accumulatedDeg = useRef(0); // total raw degrees spun so far
-  const lastLandingAngle = useRef(0); // 0 = pointing RIGHT, 180 = pointing LEFT
+  const accumulatedDeg = useRef(0);
 
   const spin = () => {
     if (isSpinning) return;
@@ -106,25 +129,13 @@ const GameScreen = ({ route }) => {
     setResult(null);
 
     const outcome = Math.random() < 0.5 ? 'RIGHT' : 'LEFT';
-
-    // Desired final angle (absolute, not relative):
-    //   RIGHT -> 0 deg (or any multiple of 360)
-    //   LEFT  -> 180 deg (or 180 + multiple of 360)
     const desiredAngle = outcome === 'RIGHT' ? 0 : 180;
 
-    // How many extra degrees to spin from the current accumulated position
-    // so we land exactly on desiredAngle after at least 4 full rotations.
-    //
-    // We need: (accumulatedDeg + extraDeg) % 360 === desiredAngle
-    // => extraDeg = (desiredAngle - accumulatedDeg % 360 + 360) % 360
-    // Then we add enough full spins (>=4) on top.
     const currentMod = ((accumulatedDeg.current % 360) + 360) % 360;
     let remainder = (desiredAngle - currentMod + 360) % 360;
-    // Guarantee at least one full rotation even when remainder is 0
     if (remainder === 0) remainder = 360;
     const extraSpins = (4 + Math.floor(Math.random() * 4)) * 360;
-    const extraDeg = extraSpins + remainder;
-    const target = accumulatedDeg.current + extraDeg;
+    const target = accumulatedDeg.current + extraSpins + remainder;
 
     Animated.timing(rotationValue, {
       toValue: target,
@@ -133,7 +144,6 @@ const GameScreen = ({ route }) => {
       useNativeDriver: true,
     }).start(() => {
       accumulatedDeg.current = target;
-      lastLandingAngle.current = desiredAngle;
       setIsSpinning(false);
       setResult(outcome);
     });
@@ -156,14 +166,12 @@ const GameScreen = ({ route }) => {
         </View>
       )}
 
-      {/* Result / idle label */}
       <View style={styles.resultContainer}>
         <Text style={[styles.resultText, { color: resultColor }]}>
           {result ?? (isSpinning ? '...' : 'TAP TO SPIN')}
         </Text>
       </View>
 
-      {/* Spinner */}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={spin}
@@ -178,28 +186,23 @@ const GameScreen = ({ route }) => {
                 { transform: [{ rotate: rotateDeg }] },
               ]}
             >
-              {/* Blunt tail (left side) */}
               <View style={styles.tail} />
-              {/* Shaft */}
               <View style={styles.shaft} />
-              {/* Arrowhead pointing RIGHT */}
               <View style={styles.arrowHead} />
             </Animated.View>
           </View>
         </View>
       </TouchableOpacity>
 
-      {/* FIX: Progress bar rebuilt without overflow:hidden on the outer
-          container, so the label text is never clipped. The filled bar is
-          rendered as a sibling behind the label using absolute positioning
-          on a wrapper that does NOT clip its children. */}
-      <View style={styles.progressBarOuter}>
+      {/* Progress section - in normal flow, NOT position:absolute */}
+      <View style={styles.progressSection}>
         <View style={styles.progressBarTrack}>
           <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
         </View>
         <Text style={styles.progressText}>
           {Math.round(distanceWalked)}m / {targetDistance}m ({Math.round(progress * 100)}%)
         </Text>
+        <Text style={styles.locationStatus}>{locationStatus}</Text>
       </View>
     </View>
   );
@@ -218,6 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5EBD7',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 60,
   },
   adventureInfo: {
     position: 'absolute',
@@ -301,12 +305,9 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
     borderLeftColor: '#2C1F14',
   },
-  // Progress bar - FIX: split into an outer wrapper (no overflow:hidden),
-  // a track layer (overflow:hidden for the fill bar only), and a text label
-  // rendered outside the clipping context.
-  progressBarOuter: {
-    position: 'absolute',
-    bottom: 40,
+  // Progress bar in normal document flow
+  progressSection: {
+    marginTop: 48,
     width: '80%',
     alignItems: 'center',
   },
@@ -322,12 +323,19 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: '#6200ee',
+    borderRadius: 12,
   },
   progressText: {
-    marginTop: 4,
+    marginTop: 6,
     fontSize: 11,
     fontWeight: 'bold',
     color: '#2C1F14',
+  },
+  locationStatus: {
+    marginTop: 4,
+    fontSize: 10,
+    color: '#7A6651',
+    fontStyle: 'italic',
   },
 });
 
