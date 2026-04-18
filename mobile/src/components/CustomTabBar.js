@@ -3,8 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 const TABS = [
   { name: 'Home',        emoji: '🏠', label: 'Home'    },
   { name: 'Explore',     emoji: '🗺',  label: 'Map'     },
-  { name: 'Leaderboard', emoji: '🏆', label: 'Leaderboard' },
-  { name: 'Game',        emoji: '🎮', label: 'Game'     },
+  { name: 'Leaderboard', emoji: '🏆', label: 'Board'   },
   { name: 'Profile',     emoji: '👤', label: 'You'     },
 ];
 

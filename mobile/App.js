@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import HomeScreen from './src/screens/HomeScreen';
 import AdventureDetailScreen from './src/screens/AdventureDetailScreen';
+import PennyHikeDetailScreen from './src/screens/PennyHikeDetailScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -23,6 +24,7 @@ function HomeNavigator({ selectedMode }) {
         {(props) => <HomeScreen {...props} selectedMode={selectedMode} />}
       </HomeStack.Screen>
       <HomeStack.Screen name="AdventureDetail" component={AdventureDetailScreen} />
+      <HomeStack.Screen name="PennyHike" component={PennyHikeDetailScreen} />
     </HomeStack.Navigator>
   );
 }
