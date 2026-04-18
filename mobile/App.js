@@ -9,6 +9,7 @@ import ExploreScreen from './src/screens/ExploreScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import ModeSelectScreen from './src/screens/ModeSelectScreen';
+import GameScreen from './src/screens/GameScreen';
 import CustomTabBar from './src/components/CustomTabBar';
 import { initDB } from './src/db/database';
 
@@ -49,6 +50,7 @@ export default function App() {
         </Tab.Screen>
         <Tab.Screen name="Explore" component={ExploreScreen} />
         <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Tab.Screen name="Game" component={GameScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
