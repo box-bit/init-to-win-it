@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import {
-  View, Text, Image, ScrollView, TouchableOpacity,
-  StyleSheet, Dimensions, FlatList,
+  View, Text, Image, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width } = Dimensions.get('window');
+import { ADVENTURES } from '../data/adventures';
 
 const AVATAR_IMGS = {
   urban_explore: require('../../assets/avatar-fox.png'),
@@ -15,37 +13,7 @@ const AVATAR_IMGS = {
 
 const FILTERS = ['All', 'Forest', 'Riverside', 'Viewpoint', 'Sunset'];
 
-const ADVENTURES = [
-  {
-    id: 'lisia-gora',
-    title: 'Foggy trail at Lisia Góra',
-    desc: 'A quiet pine loop near the river. Slow steps, big sky.',
-    duration: '45 min',
-    distance: '2.1 km',
-    tag: 'Forest walk',
-    img: require('../../assets/scene-forest.jpg'),
-  },
-  {
-    id: 'wislok-sunset',
-    title: 'Sunset over Wisłok',
-    desc: 'Find the bench past the old bridge. Stay until the colors change.',
-    duration: '30 min',
-    distance: '1.4 km',
-    tag: 'Golden hour',
-    img: require('../../assets/scene-river.jpg'),
-  },
-  {
-    id: 'campfire-chat',
-    title: 'Campfire chat night',
-    desc: "Bring two friends. One thermos. Stories you've never told.",
-    duration: '1 h',
-    distance: 'Backyard',
-    tag: 'Social',
-    img: require('../../assets/scene-campfire.jpg'),
-  },
-];
-
-export default function HomeScreen({ selectedMode }) {
+export default function HomeScreen({ selectedMode, navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
 
   const avatarImg = selectedMode ? AVATAR_IMGS[selectedMode.id] : AVATAR_IMGS.urban_explore;
@@ -72,12 +40,13 @@ export default function HomeScreen({ selectedMode }) {
         </View>
 
         {/* Hero card */}
-        <View style={styles.heroCard}>
+        <TouchableOpacity
+          style={styles.heroCard}
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('AdventureDetail', { adventure: ADVENTURES[1] })}
+        >
           <Image source={require('../../assets/scene-hills.jpg')} style={styles.heroImg} resizeMode="cover" />
-          <LinearGradient
-            colors={['transparent', 'rgba(44,31,20,0.7)']}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={['transparent', 'rgba(44,31,20,0.7)']} style={StyleSheet.absoluteFill} />
           <View style={styles.heroContent}>
             <View style={styles.heroBadge}>
               <Text style={styles.heroBadgeText}>🔥  Today's spark</Text>
@@ -85,14 +54,10 @@ export default function HomeScreen({ selectedMode }) {
             <Text style={styles.heroTitle}>Catch sunrise at Patria viewpoint</Text>
             <Text style={styles.heroMeta}>25 min · easy ride · bring a friend</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Filters */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
           {FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
@@ -117,7 +82,12 @@ export default function HomeScreen({ selectedMode }) {
 
         {/* Adventure cards */}
         {ADVENTURES.map((a) => (
-          <TouchableOpacity key={a.id} style={styles.card} activeOpacity={0.8}>
+          <TouchableOpacity
+            key={a.id}
+            style={styles.card}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('AdventureDetail', { adventure: a })}
+          >
             <Image source={a.img} style={styles.cardImg} resizeMode="cover" />
             <View style={styles.cardBody}>
               <Text style={styles.cardTag}>{a.tag}</Text>
