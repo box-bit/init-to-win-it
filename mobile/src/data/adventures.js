@@ -1,3 +1,22 @@
+export const PENNY_HIKE = {
+  id: 'penny-hike',
+  title: 'The Penny Hike',
+  desc: 'Flip a coin at every crossroad. Heads right, tails left. 30 minutes of pure chaos.',
+  summary: 'No map. No plan. Every time you hit a crossroad, flip the coin — heads means right, tails means left. Walk for 30 minutes and see where you end up.',
+  duration: '30 min',
+  distance: '???',
+  location: 'Wherever chaos takes you',
+  tag: 'Social Chaos',
+  img: require('../../assets/scene-campfire.jpg'),
+  hero: require('../../assets/scene-campfire.jpg'),
+  sections: [
+    { emoji: '🪙', label: "How it works", body: "At every crossroad, tap the coin below. Heads = go right. Tails = go left. No overriding the flip. Walk for 30 minutes, then find your way back." },
+    { emoji: '👥', label: "Best with", body: "2–4 friends. The more opinions you ignore, the better.", chips: ['Social', 'Chaos'] },
+    { emoji: '🎒', label: "What to bring", body: "Charged phone for the way back, comfortable shoes, a snack for wherever you end up." },
+    { emoji: '🛡', label: "Stay safe", body: "Share your location with someone. Stick to public streets. Set a 30-minute timer before you start." },
+  ],
+};
+
 export const ADVENTURES = [
   {
     id: 'lisia-gora',
