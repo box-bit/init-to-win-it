@@ -163,12 +163,6 @@ export default function FindNatureScreen({ route, navigation }) {
         setStatus('expired');
         return;
       }
-      if (progress.status === 'completed') {
-        resetAdventure('find-the-nature');
-        clearNaturePhotos();
-        setStatus('idle');
-        return;
-      }
       setStatus(progress.status);
       setStartedAt(progress.started_at ?? null);
     }
@@ -301,7 +295,12 @@ export default function FindNatureScreen({ route, navigation }) {
 
         {/* Title */}
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>{a.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{a.title}</Text>
+            <View style={styles.ptsBadge}>
+              <Text style={styles.ptsBadgeText}>+{ADVENTURE_POINTS['find-the-nature']} pts</Text>
+            </View>
+          </View>
           <Text style={styles.summary}>{a.summary}</Text>
           <View style={styles.meta}>
             <Text style={styles.metaItem}>⏱  {a.duration}</Text>
@@ -458,7 +457,10 @@ const styles = StyleSheet.create({
 
   // ── Title ─────────────────────────────────────────────────────────────────
   titleBlock: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: '#2C1F14', lineHeight: 32 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  title: { fontSize: 28, fontWeight: '700', color: '#2C1F14', lineHeight: 32, flex: 1 },
+  ptsBadge: { backgroundColor: '#D4A96A', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 4 },
+  ptsBadgeText: { fontSize: 12, fontWeight: '800', color: '#2C1F14' },
   summary: { fontSize: 13.5, color: '#7A6651', lineHeight: 20, marginTop: 8 },
   meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
   metaItem: { fontSize: 12, color: 'rgba(44,31,20,0.7)' },

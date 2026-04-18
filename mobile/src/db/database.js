@@ -98,6 +98,27 @@ export function getMiniAdventuresByMode(modeType) {
   return db.getAllSync('SELECT * FROM mini_adventures WHERE mode_type = ?', [modeType]);
 }
 
+export function getAvailableAdventuresByMode(modeType) {
+  if (!db) return [];
+  return db.getAllSync(`
+    SELECT ma.*
+    FROM mini_adventures ma
+    LEFT JOIN adventure_progress ap ON ap.adventure_id = ma.id
+    WHERE ma.mode_type = ? AND (ap.status IS NULL OR ap.status != 'completed')
+  `, [modeType]);
+}
+
+export function getCompletedAdventures() {
+  if (!db) return [];
+  return db.getAllSync(`
+    SELECT ma.*, ap.started_at, ap.spins_count
+    FROM adventure_progress ap
+    JOIN mini_adventures ma ON ma.id = ap.adventure_id
+    WHERE ap.status = 'completed'
+    ORDER BY ap.started_at DESC
+  `);
+}
+
 export function getAdventureProgress(adventureId) {
   if (!db) return null;
   return db.getFirstSync('SELECT * FROM adventure_progress WHERE adventure_id = ?', [adventureId]);

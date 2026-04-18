@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, Image, ScrollView, TouchableOpacity,
-  StyleSheet, Animated, Easing, Platform, Alert,
+  StyleSheet, Platform, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ import {
   completeAdventure, expireAdventure, resetAdventure,
 } from '../db/database';
 import DirectionSpinner from './GameScreen';
+import { addScore } from '../score';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REQUIRED_SPINS = 5;
@@ -228,7 +229,12 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
 
         {/* Title */}
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>{a.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{a.title}</Text>
+            <View style={styles.ptsBadge}>
+              <Text style={styles.ptsBadgeText}>+{ADVENTURE_POINTS['penny-hike']} pts</Text>
+            </View>
+          </View>
           <Text style={styles.summary}>{a.summary}</Text>
           <View style={styles.meta}>
             <Text style={styles.metaItem}>⏱  {a.duration}</Text>
@@ -271,8 +277,19 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
                 <Text style={styles.progressTimer}>{timeLeft}</Text>
               </View>
 
-            <DirectionSpinner onSpinFinished={handleSpin} />
-              <View style={[styles.progressRow, { marginTop: isChaos ? 10 : 0 }]}>
+              {isChaos && (
+                <>
+                  <View style={styles.progressRow}>
+                    <Text style={styles.progressLabel}>🪙  Coin flips</Text>
+                    <Text style={styles.progressValue}>{spins} / {REQUIRED_SPINS}</Text>
+                  </View>
+                  <View style={styles.track}>
+                    <View style={[styles.fill, { width: `${spinsPct}%`, backgroundColor: '#C0392B' }]} />
+                  </View>
+                </>
+              )}
+
+              <View style={[styles.progressRow, { marginTop: 10 }]}>
                 <Text style={styles.progressLabel}>🚶  Distance</Text>
                 <Text style={styles.progressValue}>{Math.round(distanceWalked)}m / 2000m</Text>
               </View>
@@ -283,7 +300,7 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
               {locationStatus ? <Text style={styles.locationStatus}>{locationStatus}</Text> : null}
             </View>
 
-            {isChaos && <CoinFlipper onSpin={handleSpin} />}
+            {isChaos && <DirectionSpinner onSpinFinished={handleSpin} />}
 
             <TouchableOpacity style={styles.finishBtn} onPress={handleFinish} activeOpacity={0.85}>
               <Text style={styles.finishBtnText}>Finish adventure</Text>
@@ -329,7 +346,10 @@ const styles = StyleSheet.create({
   heroTagText: { fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase' },
 
   titleBlock: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: '#2C1F14', lineHeight: 32 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  title: { fontSize: 28, fontWeight: '700', color: '#2C1F14', lineHeight: 32, flex: 1 },
+  ptsBadge: { backgroundColor: '#D4A96A', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 4 },
+  ptsBadgeText: { fontSize: 12, fontWeight: '800', color: '#2C1F14' },
   summary: { fontSize: 13.5, color: '#7A6651', lineHeight: 20, marginTop: 8 },
   meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
   metaItem: { fontSize: 12, color: 'rgba(44,31,20,0.7)' },

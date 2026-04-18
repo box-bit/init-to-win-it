@@ -3,8 +3,8 @@ import {
   View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PENNY_HIKE, FIND_NATURE } from '../data/adventures';
-import { getMiniAdventuresByMode } from '../db/database';
+import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
+import { getAvailableAdventuresByMode } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
   'penny-hike': { img: require('../../assets/scene-campfire.jpg') },
@@ -40,7 +40,7 @@ export default function HomeScreen({ selectedMode, navigation }) {
       ];
       setDbMiniAdventures(WEB_MINI_ADVENTURES.filter(a => a.mode_type === selectedMode.id));
     } else {
-      setDbMiniAdventures(getMiniAdventuresByMode(selectedMode.id));
+      setDbMiniAdventures(getAvailableAdventuresByMode(selectedMode.id));
     }
   }, [selectedMode]);
 
@@ -132,7 +132,14 @@ export default function HomeScreen({ selectedMode, navigation }) {
             >
               <Image source={assets.img} style={styles.cardImg} resizeMode="cover" />
               <View style={styles.cardBody}>
-                <Text style={[styles.cardTag, { color: '#3D6142' }]}>{a.tag}</Text>
+                <View style={styles.cardTagRow}>
+                  <Text style={[styles.cardTag, { color: '#3D6142' }]}>{a.tag}</Text>
+                  {ADVENTURE_POINTS[a.id] && (
+                    <View style={styles.ptsBadge}>
+                      <Text style={styles.ptsBadgeText}>+{ADVENTURE_POINTS[a.id]} pts</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
                 <Text style={styles.cardDesc} numberOfLines={2}>{a.description}</Text>
                 <View style={styles.cardMeta}>
@@ -193,7 +200,10 @@ const styles = StyleSheet.create({
   miniCard: { borderColor: 'rgba(61,97,66,0.2)', borderWidth: 1.5 },
   cardImg: { width: 76, height: 76, borderRadius: 16 },
   cardBody: { flex: 1, paddingHorizontal: 12, paddingVertical: 2 },
+  cardTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   cardTag: { fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#C87941', fontWeight: '700' },
+  ptsBadge: { backgroundColor: '#D4A96A', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  ptsBadgeText: { fontSize: 10, fontWeight: '800', color: '#2C1F14' },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#2C1F14', marginTop: 2 },
   cardDesc: { fontSize: 11.5, color: '#7A6651', lineHeight: 16, marginTop: 3 },
   cardMeta: { flexDirection: 'row', gap: 12, marginTop: 6 },
