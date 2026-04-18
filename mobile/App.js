@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import AdventureDetailScreen from './src/screens/AdventureDetailScreen';
 import PennyHikeDetailScreen from './src/screens/PennyHikeDetailScreen';
+import FindNatureScreen from './src/screens/FindNatureScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -25,6 +26,7 @@ function HomeNavigator({ selectedMode }) {
       </HomeStack.Screen>
       <HomeStack.Screen name="AdventureDetail" component={AdventureDetailScreen} />
       <HomeStack.Screen name="PennyHike" component={PennyHikeDetailScreen} />
+      <HomeStack.Screen name="FindNature" component={FindNatureScreen} />
     </HomeStack.Navigator>
   );
 }

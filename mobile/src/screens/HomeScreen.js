@@ -3,11 +3,12 @@ import {
   View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ADVENTURES, PENNY_HIKE } from '../data/adventures';
+import { PENNY_HIKE, FIND_NATURE } from '../data/adventures';
 import { getMiniAdventuresByMode } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
   'penny-hike': { img: require('../../assets/scene-campfire.jpg') },
+  'find-the-nature': { img: require('../../assets/scene-forest.jpg') },
 };
 
 const AVATAR_IMGS = {
@@ -18,6 +19,12 @@ const AVATAR_IMGS = {
 
 const FILTERS = ['All', 'Forest', 'Riverside', 'Viewpoint', 'Sunset'];
 
+function getScreenForAdventure(adventureId) {
+  if (adventureId === 'penny-hike') return 'PennyHike';
+  if (adventureId === 'find-the-nature') return 'FindNature';
+  return 'PennyHike';
+}
+
 export default function HomeScreen({ selectedMode, navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [dbMiniAdventures, setDbMiniAdventures] = useState([]);
@@ -25,10 +32,11 @@ export default function HomeScreen({ selectedMode, navigation }) {
   useEffect(() => {
     if (!selectedMode) return;
     if (Platform.OS === 'web') {
-      // SQLite unavailable on web — use in-memory seed
       const WEB_MINI_ADVENTURES = [
         { id: 'penny-hike', title: PENNY_HIKE.title, description: PENNY_HIKE.desc,
           duration: PENNY_HIKE.duration, tag: PENNY_HIKE.tag, mode_type: 'social_chaos' },
+        { id: 'find-the-nature', title: FIND_NATURE.title, description: FIND_NATURE.desc,
+          duration: FIND_NATURE.duration, tag: FIND_NATURE.tag, mode_type: 'survivalist' },
       ];
       setDbMiniAdventures(WEB_MINI_ADVENTURES.filter(a => a.mode_type === selectedMode.id));
     } else {
@@ -63,7 +71,12 @@ export default function HomeScreen({ selectedMode, navigation }) {
         <TouchableOpacity
           style={styles.heroCard}
           activeOpacity={0.9}
-          onPress={() => navigation.navigate('AdventureDetail', { adventure: ADVENTURES[1] })}
+          onPress={() => {
+            if (dbMiniAdventures.length > 0) {
+              const first = dbMiniAdventures[0];
+              navigation.navigate(getScreenForAdventure(first.id), { selectedMode });
+            }
+          }}
         >
           <Image source={require('../../assets/scene-hills.jpg')} style={styles.heroImg} resizeMode="cover" />
           <LinearGradient colors={['transparent', 'rgba(44,31,20,0.7)']} style={StyleSheet.absoluteFill} />
@@ -71,8 +84,8 @@ export default function HomeScreen({ selectedMode, navigation }) {
             <View style={styles.heroBadge}>
               <Text style={styles.heroBadgeText}>🔥  Today's spark</Text>
             </View>
-            <Text style={styles.heroTitle}>Catch sunrise at Patria viewpoint</Text>
-            <Text style={styles.heroMeta}>25 min · easy ride · bring a friend</Text>
+            <Text style={styles.heroTitle}>Your micro-adventure awaits</Text>
+            <Text style={styles.heroMeta}>Step outside · discover something new</Text>
           </View>
         </TouchableOpacity>
 
@@ -101,55 +114,38 @@ export default function HomeScreen({ selectedMode, navigation }) {
         </View>
 
         {/* Mini adventures from DB */}
+        {dbMiniAdventures.length === 0 && (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No adventures for your mode yet.</Text>
+          </View>
+        )}
+
         {dbMiniAdventures.map((a) => {
           const assets = MINI_ADVENTURE_ASSETS[a.id] ?? MINI_ADVENTURE_ASSETS['penny-hike'];
+          const screenName = getScreenForAdventure(a.id);
           return (
             <TouchableOpacity
               key={a.id}
-              style={[styles.card, styles.chaosCard]}
+              style={[styles.card, styles.miniCard]}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('PennyHike', { selectedMode })}
+              onPress={() => navigation.navigate(screenName, { selectedMode })}
             >
               <Image source={assets.img} style={styles.cardImg} resizeMode="cover" />
               <View style={styles.cardBody}>
-                <Text style={[styles.cardTag, { color: '#C0392B' }]}>{a.tag}</Text>
+                <Text style={[styles.cardTag, { color: '#3D6142' }]}>{a.tag}</Text>
                 <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
                 <Text style={styles.cardDesc} numberOfLines={2}>{a.description}</Text>
                 <View style={styles.cardMeta}>
                   <Text style={styles.cardMetaText}>⏱ {a.duration}</Text>
-                  <Text style={styles.cardMetaText}>🪙 Coin decides</Text>
+                  <Text style={styles.cardMetaText}>📍 {a.distance ?? '???'}</Text>
                 </View>
               </View>
-              <View style={[styles.cardArrow, { backgroundColor: '#C0392B' }]}>
+              <View style={[styles.cardArrow, { backgroundColor: '#3D6142' }]}>
                 <Text style={styles.cardArrowText}>›</Text>
               </View>
             </TouchableOpacity>
           );
         })}
-
-        {/* Adventure cards */}
-        {ADVENTURES.map((a) => (
-          <TouchableOpacity
-            key={a.id}
-            style={styles.card}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdventureDetail', { adventure: a })}
-          >
-            <Image source={a.img} style={styles.cardImg} resizeMode="cover" />
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTag}>{a.tag}</Text>
-              <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
-              <Text style={styles.cardDesc} numberOfLines={2}>{a.desc}</Text>
-              <View style={styles.cardMeta}>
-                <Text style={styles.cardMetaText}>⏱ {a.duration}</Text>
-                <Text style={styles.cardMetaText}>📍 {a.distance}</Text>
-              </View>
-            </View>
-            <View style={styles.cardArrow}>
-              <Text style={styles.cardArrowText}>›</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -190,7 +186,11 @@ const styles = StyleSheet.create({
   sectionSub: { fontSize: 13, color: '#7A6651', marginTop: 1 },
   seeAll: { fontSize: 13, fontWeight: '600', color: '#C87941' },
 
+  emptyCard: { marginHorizontal: 20, padding: 24, backgroundColor: '#fff', borderRadius: 22, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)' },
+  emptyText: { fontSize: 13, color: '#7A6651', textAlign: 'center' },
+
   card: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, flexDirection: 'row', alignItems: 'center', padding: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)' },
+  miniCard: { borderColor: 'rgba(61,97,66,0.2)', borderWidth: 1.5 },
   cardImg: { width: 76, height: 76, borderRadius: 16 },
   cardBody: { flex: 1, paddingHorizontal: 12, paddingVertical: 2 },
   cardTag: { fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#C87941', fontWeight: '700' },
@@ -200,5 +200,4 @@ const styles = StyleSheet.create({
   cardMetaText: { fontSize: 11, color: 'rgba(44,31,20,0.6)' },
   cardArrow: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#2C1F14', alignItems: 'center', justifyContent: 'center' },
   cardArrowText: { fontSize: 20, color: '#F5EBD7', lineHeight: 24 },
-  chaosCard: { borderColor: 'rgba(192,57,43,0.2)', borderWidth: 1.5 },
 });
