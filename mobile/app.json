@@ -20,7 +20,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.hogigo.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,6 +33,11 @@
     "plugins": [
       "expo-sqlite",
       "expo-location"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5fd67128-59b1-4d53-8d04-ba8a76f3d362"
+      }
+    }
   }
 }
