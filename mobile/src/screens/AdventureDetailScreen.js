@@ -66,7 +66,11 @@ export default function AdventureDetailScreen({ route, navigation }) {
 
       {/* Sticky CTA */}
       <View style={styles.cta}>
-        <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Game', { adventure })}
+        >
           <Text style={styles.ctaBtnText}>Start adventure</Text>
           <Text style={styles.ctaBtnMeta}>{adventure.duration}</Text>
         </TouchableOpacity>

@@ -4,6 +4,7 @@ const TABS = [
   { name: 'Home',        emoji: '🏠', label: 'Home'    },
   { name: 'Explore',     emoji: '🗺',  label: 'Map'     },
   { name: 'Leaderboard', emoji: '🏆', label: 'Leaderboard' },
+  { name: 'Game',        emoji: '🎮', label: 'Game'     },
   { name: 'Profile',     emoji: '👤', label: 'You'     },
 ];
 
