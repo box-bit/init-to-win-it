@@ -10,7 +10,7 @@ import {
   getAdventureProgress, startAdventure, incrementSpins,
   completeAdventure, expireAdventure, resetAdventure,
 } from '../db/database';
-import { addScore, getUserScore } from '../score';
+import DirectionSpinner from './GameScreen';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REQUIRED_SPINS = 5;
@@ -50,63 +50,6 @@ const watchPositionCrossPlatform = async (onUpdate, onError) => {
     return () => sub.remove();
   }
 };
-
-// ─── Coin Flipper ─────────────────────────────────────────────────────────────
-const SHAFT_W = 90, SHAFT_H = 10, HEAD_W = 20, HEAD_H = 28, TAIL_W = 10, TAIL_H = 16;
-
-function CoinFlipper({ onSpin }) {
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState(null);
-  const rotationValue = useRef(new Animated.Value(0)).current;
-  const currentDeg = useRef(0);
-
-  const spin = () => {
-    if (isSpinning) return;
-    setIsSpinning(true);
-    setResult(null);
-    const outcome = Math.random() < 0.5 ? 'RIGHT' : 'LEFT';
-    const landingOffset = outcome === 'RIGHT' ? 0 : 180;
-    const target = currentDeg.current + (4 + Math.floor(Math.random() * 4)) * 360 + landingOffset;
-    Animated.timing(rotationValue, {
-      toValue: target,
-      duration: 2800 + Math.random() * 600,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      currentDeg.current = target;
-      setIsSpinning(false);
-      setResult(outcome);
-      onSpin();
-    });
-  };
-
-  const rotateDeg = rotationValue.interpolate({ inputRange: [-36000, 36000], outputRange: ['-36000deg', '36000deg'] });
-  const resultColor = result === 'LEFT' ? '#C0392B' : result === 'RIGHT' ? '#3D6142' : '#7A6651';
-
-  return (
-    <View style={coin.wrapper}>
-      <Text style={[coin.result, { color: resultColor }]}>
-        {result ? `GO ${result}` : isSpinning ? '…' : 'TAP TO FLIP'}
-      </Text>
-      <TouchableOpacity onPress={spin} activeOpacity={0.85} disabled={isSpinning}>
-        <View style={coin.outerRing}>
-          <View style={coin.innerCircle}>
-            <Animated.View style={[coin.arrowContainer, { transform: [{ rotate: rotateDeg }] }]}>
-              <View style={coin.tail} />
-              <View style={coin.shaft} />
-              <View style={coin.arrowHead} />
-            </Animated.View>
-          </View>
-        </View>
-      </TouchableOpacity>
-      {result && (
-        <Text style={coin.hint}>
-          {result === 'RIGHT' ? '→ Turn right at this crossroad' : '← Turn left at this crossroad'}
-        </Text>
-      )}
-    </View>
-  );
-}
 
 // ─── DB / storage helpers ─────────────────────────────────────────────────────
 async function loadProgress() {
@@ -328,18 +271,7 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
                 <Text style={styles.progressTimer}>{timeLeft}</Text>
               </View>
 
-              {isChaos && (
-                <>
-                  <View style={styles.progressRow}>
-                    <Text style={styles.progressLabel}>🪙  Spins</Text>
-                    <Text style={styles.progressValue}>{spins} / {REQUIRED_SPINS}</Text>
-                  </View>
-                  <View style={styles.track}>
-                    <View style={[styles.fill, { width: `${spinsPct}%`, backgroundColor: '#C0392B' }]} />
-                  </View>
-                </>
-              )}
-
+            <DirectionSpinner onSpinFinished={handleSpin} />
               <View style={[styles.progressRow, { marginTop: isChaos ? 10 : 0 }]}>
                 <Text style={styles.progressLabel}>🚶  Distance</Text>
                 <Text style={styles.progressValue}>{Math.round(distanceWalked)}m / 2000m</Text>
@@ -384,18 +316,6 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const coin = StyleSheet.create({
-  wrapper: { alignItems: 'center', paddingVertical: 16 },
-  result: { fontSize: 26, fontWeight: '900', letterSpacing: 4, marginBottom: 20, minHeight: 36 },
-  outerRing: { width: 180, height: 180, borderRadius: 90, borderWidth: 3, borderColor: '#D4A96A', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(212,169,106,0.08)', shadowColor: '#B8860B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 6 },
-  innerCircle: { width: 138, height: 138, borderRadius: 69, backgroundColor: '#FFF8ED', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E8C88A' },
-  arrowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  tail: { width: TAIL_W, height: TAIL_H, backgroundColor: '#2C1F14', borderTopLeftRadius: 5, borderBottomLeftRadius: 5 },
-  shaft: { width: SHAFT_W, height: SHAFT_H, backgroundColor: '#2C1F14' },
-  arrowHead: { width: 0, height: 0, borderTopWidth: HEAD_H / 2, borderBottomWidth: HEAD_H / 2, borderLeftWidth: HEAD_W, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#2C1F14' },
-  hint: { marginTop: 16, fontSize: 14, fontWeight: '600', color: '#7A6651', textAlign: 'center' },
-});
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5EBD7' },
   scroll: { paddingBottom: 16 },
