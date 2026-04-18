@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,19 +7,121 @@ import {
   TouchableOpacity,
   Dimensions,
   Easing,
+  Alert,
+  Platform,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-const GameScreen = () => {
-  const [progress, setProgress] = useState(0.5);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState(null); // null | 'LEFT' | 'RIGHT'
+// Helper to calculate distance in meters between two GPS coordinates
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const dPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const dLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) * Math.sin(dLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
-  // We drive rotation as plain degrees (unbounded) and interpolate over a
-  // matching unbounded range so it never resets to 0.
+// ---------------------------------------------------------------------------
+// Cross-platform location tracker
+// - On web (Chromium): uses navigator.geolocation
+// - On native: uses expo-location (imported lazily so web bundle never chokes)
+// ---------------------------------------------------------------------------
+const watchPositionCrossPlatform = async (onUpdate, onError) => {
+  if (Platform.OS === 'web') {
+    // Browser Geolocation API
+    if (!navigator?.geolocation) {
+      onError('Geolocation is not supported by this browser.');
+      return () => {};
+    }
+    const id = navigator.geolocation.watchPosition(
+      (pos) => onUpdate(pos.coords.latitude, pos.coords.longitude),
+      (err) => onError(err.message),
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  } else {
+    // Native: expo-location
+    const Location = await import('expo-location');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      onError('Location permission denied.');
+      return () => {};
+    }
+    const sub = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+      (loc) => onUpdate(loc.coords.latitude, loc.coords.longitude)
+    );
+    return () => sub.remove();
+  }
+};
+
+const GameScreen = ({ route }) => {
+  const adventure = route?.params?.adventure;
+
+  const parseDistance = (distStr) => {
+    if (!distStr) return 1000;
+    const match = distStr.match(/(\d+(\.\d+)?)\s*(km|m)?/i);
+    if (!match) return 1000;
+    const value = parseFloat(match[1]);
+    const unit = match[3]?.toLowerCase();
+    return unit === 'm' ? value : value * 1000;
+  };
+
+  const targetDistance = parseDistance(adventure?.distance);
+  const [distanceWalked, setDistanceWalked] = useState(0);
+  const [locationStatus, setLocationStatus] = useState('Requesting location...');
+  const lastPositionRef = useRef(null);
+
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const progress = Math.min(distanceWalked / targetDistance, 1);
+
+  useEffect(() => {
+    setDistanceWalked(0);
+    lastPositionRef.current = null;
+    setLocationStatus('Requesting location...');
+
+    let cleanup = () => {};
+
+    const start = async () => {
+      try {
+        cleanup = await watchPositionCrossPlatform(
+          (lat, lon) => {
+            setLocationStatus('Tracking');
+            if (lastPositionRef.current) {
+              const delta = getDistance(
+                lastPositionRef.current.latitude,
+                lastPositionRef.current.longitude,
+                lat,
+                lon
+              );
+              setDistanceWalked((prev) => prev + delta);
+            }
+            lastPositionRef.current = { latitude: lat, longitude: lon };
+          },
+          (errMsg) => {
+            setLocationStatus('Location unavailable: ' + errMsg);
+          }
+        );
+      } catch (e) {
+        setLocationStatus('Location error: ' + e.message);
+      }
+    };
+
+    start();
+    return () => { cleanup(); };
+  }, [adventure?.id]);
+
+  // Arrow spin logic
   const rotationValue = useRef(new Animated.Value(0)).current;
-  const currentDeg = useRef(0); // tracks the true accumulated degrees
+  const accumulatedDeg = useRef(0);
 
   const spin = () => {
     if (isSpinning) return;
@@ -27,11 +129,13 @@ const GameScreen = () => {
     setResult(null);
 
     const outcome = Math.random() < 0.5 ? 'RIGHT' : 'LEFT';
-    // RIGHT → lands pointing right (multiple of 360°)
-    // LEFT  → lands pointing left  (multiple of 360° + 180°)
-    const landingOffset = outcome === 'RIGHT' ? 0 : 180;
+    const desiredAngle = outcome === 'RIGHT' ? 0 : 180;
+
+    const currentMod = ((accumulatedDeg.current % 360) + 360) % 360;
+    let remainder = (desiredAngle - currentMod + 360) % 360;
+    if (remainder === 0) remainder = 360;
     const extraSpins = (4 + Math.floor(Math.random() * 4)) * 360;
-    const target = currentDeg.current + extraSpins + landingOffset;
+    const target = accumulatedDeg.current + extraSpins + remainder;
 
     Animated.timing(rotationValue, {
       toValue: target,
@@ -39,13 +143,12 @@ const GameScreen = () => {
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
-      currentDeg.current = target;
+      accumulatedDeg.current = target;
       setIsSpinning(false);
       setResult(outcome);
     });
   };
 
-  // Interpolate over a huge unbounded range — no wrapping, no snap.
   const rotateDeg = rotationValue.interpolate({
     inputRange: [-36000, 36000],
     outputRange: ['-36000deg', '36000deg'],
@@ -56,15 +159,19 @@ const GameScreen = () => {
 
   return (
     <View style={styles.container}>
+      {adventure && (
+        <View style={styles.adventureInfo}>
+          <Text style={styles.adventureTitle}>{adventure.title}</Text>
+          <Text style={styles.adventureTarget}>Goal: {adventure.distance}</Text>
+        </View>
+      )}
 
-      {/* Result / idle label */}
       <View style={styles.resultContainer}>
         <Text style={[styles.resultText, { color: resultColor }]}>
-          {result ?? (isSpinning ? '…' : 'TAP TO SPIN')}
+          {result ?? (isSpinning ? '...' : 'TAP TO SPIN')}
         </Text>
       </View>
 
-      {/* Spinner */}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={spin}
@@ -79,21 +186,23 @@ const GameScreen = () => {
                 { transform: [{ rotate: rotateDeg }] },
               ]}
             >
-              {/* Blunt tail (left side) */}
               <View style={styles.tail} />
-              {/* Shaft */}
               <View style={styles.shaft} />
-              {/* Arrowhead pointing RIGHT */}
               <View style={styles.arrowHead} />
             </Animated.View>
           </View>
         </View>
       </TouchableOpacity>
 
-      {/* Progress Bar — untouched */}
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
-        <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+      {/* Progress section - in normal flow, NOT position:absolute */}
+      <View style={styles.progressSection}>
+        <View style={styles.progressBarTrack}>
+          <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+        </View>
+        <Text style={styles.progressText}>
+          {Math.round(distanceWalked)}m / {targetDistance}m ({Math.round(progress * 100)}%)
+        </Text>
+        <Text style={styles.locationStatus}>{locationStatus}</Text>
       </View>
     </View>
   );
@@ -112,6 +221,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5EBD7',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  adventureInfo: {
+    position: 'absolute',
+    top: 60,
+    alignItems: 'center',
+  },
+  adventureTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2C1F14',
+    textAlign: 'center',
+  },
+  adventureTarget: {
+    fontSize: 14,
+    color: '#7A6651',
+    marginTop: 4,
   },
   resultContainer: {
     marginBottom: 36,
@@ -179,30 +305,37 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
     borderLeftColor: '#2C1F14',
   },
-  // Progress bar — untouched
-  progressBarContainer: {
-    position: 'absolute',
-    bottom: 40,
+  // Progress bar in normal document flow
+  progressSection: {
+    marginTop: 48,
     width: '80%',
-    height: 20,
+    alignItems: 'center',
+  },
+  progressBarTrack: {
+    width: '100%',
+    height: 24,
     backgroundColor: '#E0D0B0',
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#D4A96A',
   },
-  progressBar: {
+  progressBarFill: {
     height: '100%',
     backgroundColor: '#6200ee',
+    borderRadius: 12,
   },
   progressText: {
-    position: 'absolute',
-    width: '100%',
-    textAlign: 'center',
-    fontSize: 12,
+    marginTop: 6,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#2C1F14',
-    lineHeight: 18,
+  },
+  locationStatus: {
+    marginTop: 4,
+    fontSize: 10,
+    color: '#7A6651',
+    fontStyle: 'italic',
   },
 });
 
