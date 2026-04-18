@@ -44,6 +44,10 @@ export function initDB() {
     );
   `);
 
+  // TEMP DEV RESET — remove after testing
+  db.runSync("DELETE FROM adventure_progress WHERE adventure_id = 'find-the-nature'");
+  db.runSync("DELETE FROM nature_photos");
+
   seedMiniAdventures();
 }
 

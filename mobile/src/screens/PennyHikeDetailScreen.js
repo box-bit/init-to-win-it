@@ -1,15 +1,16 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, Image, ScrollView, TouchableOpacity,
-  StyleSheet, Animated, Easing, Platform,
+  StyleSheet, Animated, Easing, Platform, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PENNY_HIKE } from '../data/adventures';
+import { PENNY_HIKE, ADVENTURE_POINTS } from '../data/adventures';
 import {
   getAdventureProgress, startAdventure, incrementSpins,
   completeAdventure, expireAdventure, resetAdventure,
 } from '../db/database';
+import { addScore, getUserScore } from '../score';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REQUIRED_SPINS = 5;
@@ -129,31 +130,18 @@ function formatTimeLeft(startedAt) {
 export default function PennyHikeDetailScreen({ route, navigation }) {
   const isChaos = route.params?.selectedMode?.id === 'social_chaos';
 
-  const [status, setStatus]           = useState('idle');
-  const [spins, setSpins]             = useState(0);
-  const [startedAt, setStartedAt]     = useState(null);
-  const [timeLeft, setTimeLeft]       = useState('');
+  const [status, setStatus]                 = useState('idle');
+  const [spins, setSpins]                   = useState(0);
+  const [startedAt, setStartedAt]           = useState(null);
+  const [timeLeft, setTimeLeft]             = useState('');
   const [distanceWalked, setDistanceWalked] = useState(0);
   const [locationStatus, setLocationStatus] = useState('');
 
-  const timerRef       = useRef(null);
-  const gpsCleanupRef  = useRef(null);
-  const lastPosRef     = useRef(null);
-  const spinsRef       = useRef(0);          // mirror for GPS callback closure
-  const distanceRef    = useRef(0);
-
-  // ── auto-complete check ──────────────────────────────────────────────────
-  const tryComplete = useCallback(async (currentSpins, currentDistance) => {
-    if (currentSpins < REQUIRED_SPINS || currentDistance < REQUIRED_DISTANCE_M) return;
-    if (Platform.OS !== 'web') completeAdventure('penny-hike');
-    else {
-      const row = await loadProgress();
-      if (row) await saveProgress({ ...row, status: 'completed' });
-    }
-    setStatus('completed');
-    clearInterval(timerRef.current);
-    gpsCleanupRef.current?.();
-  }, []);
+  const timerRef      = useRef(null);
+  const gpsCleanupRef = useRef(null);
+  const lastPosRef    = useRef(null);
+  const spinsRef      = useRef(0);
+  const distanceRef   = useRef(0);
 
   // ── load progress on mount ───────────────────────────────────────────────
   const refresh = useCallback(async () => {
@@ -201,7 +189,6 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
           const delta = getDistance(lastPosRef.current.latitude, lastPosRef.current.longitude, lat, lon);
           distanceRef.current += delta;
           setDistanceWalked(distanceRef.current);
-          tryComplete(spinsRef.current, distanceRef.current);
         }
         lastPosRef.current = { latitude: lat, longitude: lon };
       },
@@ -209,7 +196,7 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
     ).then((cleanup) => { gpsCleanupRef.current = cleanup; });
 
     return () => { cancelled = true; gpsCleanupRef.current?.(); };
-  }, [status, tryComplete]);
+  }, [status]);
 
   // ── actions ──────────────────────────────────────────────────────────────
   async function handleStart() {
@@ -229,7 +216,41 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
     setSpins(newSpins);
     if (Platform.OS !== 'web') incrementSpins('penny-hike');
     else { const row = await loadProgress(); if (row) await saveProgress({ ...row, spins_count: newSpins }); }
-    tryComplete(newSpins, distanceRef.current);
+  }
+
+  async function handleFinish() {
+    const missing = [];
+    if (isChaos && spins < REQUIRED_SPINS) {
+      missing.push(`${REQUIRED_SPINS - spins} more coin flip${REQUIRED_SPINS - spins !== 1 ? 's' : ''}`);
+    }
+    if (distanceRef.current < REQUIRED_DISTANCE_M) {
+      const left = Math.round(REQUIRED_DISTANCE_M - distanceRef.current);
+      missing.push(`${left}m more walking (${Math.round(distanceRef.current)}m / 2000m)`);
+    }
+    if (missing.length > 0) {
+      Alert.alert("Not done yet!", `You still need:\n\n• ${missing.join('\n• ')}`);
+      return;
+    }
+    if (Platform.OS !== 'web') completeAdventure('penny-hike');
+    else {
+      const row = await loadProgress();
+      if (row) await saveProgress({ ...row, status: 'completed' });
+    }
+    clearInterval(timerRef.current);
+    gpsCleanupRef.current?.();
+
+    const pts = ADVENTURE_POINTS['penny-hike'];
+    const totalScore = await addScore(pts);
+    navigation.navigate('AdventureComplete', {
+      points: pts,
+      totalScore,
+      hero: PENNY_HIKE.hero,
+      tag: PENNY_HIKE.tag,
+      stats: [
+        { label: 'Flips', value: String(spinsRef.current), unit: '' },
+        { label: 'Walked', value: String(Math.round(distanceRef.current)), unit: 'm' },
+      ],
+    });
   }
 
   async function handleReset() {
@@ -243,7 +264,7 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
   }
 
   const a = PENNY_HIKE;
-  const distancePct = Math.min(100, (distanceWalked / REQUIRED_DISTANCE_M) * 100);
+  const distancePct = Math.min(100, (distanceRef.current / REQUIRED_DISTANCE_M) * 100);
   const spinsPct    = Math.min(100, (spins / REQUIRED_SPINS) * 100);
 
   return (
@@ -273,18 +294,6 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── COMPLETED ── */}
-        {status === 'completed' && (
-          <View style={[styles.stateCard, styles.stateCardCompleted]}>
-            <Text style={styles.stateEmoji}>🏆</Text>
-            <Text style={[styles.stateTitle, { color: '#3D6142' }]}>Adventure completed!</Text>
-            <Text style={styles.stateDesc}>You spun {spins} times and walked {Math.round(distanceWalked)}m. Chaos well done.</Text>
-            <TouchableOpacity style={styles.resetBtn} onPress={handleReset} activeOpacity={0.8}>
-              <Text style={styles.resetBtnText}>Start again</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* ── EXPIRED ── */}
         {status === 'expired' && (
           <View style={[styles.stateCard, styles.stateCardExpired]}>
@@ -297,49 +306,56 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* ── COIN FLIPPER + PROGRESS (idle & in_progress, chaos only) ── */}
-        {isChaos && (status === 'idle' || status === 'in_progress') && (
+        {/* ── IDLE — Start button ── */}
+        {status === 'idle' && (
+          <View style={styles.actionCard}>
+            <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
+              <Text style={styles.startBtnText}>Start adventure</Text>
+              <Text style={styles.startBtnMeta}>2 hours</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── IN PROGRESS — Coin flipper + progress + Finish ── */}
+        {status === 'in_progress' && (
           <View style={styles.flipCard}>
-            <Text style={styles.flipTitle}>🪙  Flip at the crossroad</Text>
+            {isChaos && <Text style={styles.flipTitle}>🪙  Flip at the crossroad</Text>}
 
-            {status === 'in_progress' && (
-              <View style={styles.progressBlock}>
-                {/* Timer */}
-                <View style={styles.progressRow}>
-                  <Text style={styles.progressLabel}>⏳  Time left</Text>
-                  <Text style={styles.progressTimer}>{timeLeft}</Text>
-                </View>
-
-                {/* Spins */}
-                <View style={styles.progressRow}>
-                  <Text style={styles.progressLabel}>🪙  Spins</Text>
-                  <Text style={styles.progressValue}>{spins} / {REQUIRED_SPINS}</Text>
-                </View>
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${spinsPct}%`, backgroundColor: '#C0392B' }]} />
-                </View>
-
-                {/* Distance */}
-                <View style={[styles.progressRow, { marginTop: 10 }]}>
-                  <Text style={styles.progressLabel}>🚶  Distance</Text>
-                  <Text style={styles.progressValue}>{Math.round(distanceWalked)}m / 2000m</Text>
-                </View>
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${distancePct}%`, backgroundColor: '#3D6142' }]} />
-                </View>
-
-                {locationStatus ? <Text style={styles.locationStatus}>{locationStatus}</Text> : null}
+            {/* Progress */}
+            <View style={styles.progressBlock}>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressLabel}>⏳  Time left</Text>
+                <Text style={styles.progressTimer}>{timeLeft}</Text>
               </View>
-            )}
 
-            <CoinFlipper onSpin={handleSpin} />
+              {isChaos && (
+                <>
+                  <View style={styles.progressRow}>
+                    <Text style={styles.progressLabel}>🪙  Spins</Text>
+                    <Text style={styles.progressValue}>{spins} / {REQUIRED_SPINS}</Text>
+                  </View>
+                  <View style={styles.track}>
+                    <View style={[styles.fill, { width: `${spinsPct}%`, backgroundColor: '#C0392B' }]} />
+                  </View>
+                </>
+              )}
 
-            {status === 'idle' && (
-              <TouchableOpacity style={styles.ctaBtn} onPress={handleStart} activeOpacity={0.85}>
-                <Text style={styles.ctaBtnText}>Start adventure</Text>
-                <Text style={styles.ctaBtnMeta}>2 hours</Text>
-              </TouchableOpacity>
-            )}
+              <View style={[styles.progressRow, { marginTop: isChaos ? 10 : 0 }]}>
+                <Text style={styles.progressLabel}>🚶  Distance</Text>
+                <Text style={styles.progressValue}>{Math.round(distanceWalked)}m / 2000m</Text>
+              </View>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width: `${distancePct}%`, backgroundColor: '#3D6142' }]} />
+              </View>
+
+              {locationStatus ? <Text style={styles.locationStatus}>{locationStatus}</Text> : null}
+            </View>
+
+            {isChaos && <CoinFlipper onSpin={handleSpin} />}
+
+            <TouchableOpacity style={styles.finishBtn} onPress={handleFinish} activeOpacity={0.85}>
+              <Text style={styles.finishBtnText}>Finish adventure</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -405,6 +421,11 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 20, fontWeight: '700', color: '#2C1F14', marginBottom: 8 },
   stateDesc: { fontSize: 13, color: '#7A6651', textAlign: 'center', lineHeight: 19 },
 
+  actionCard: { marginHorizontal: 20, marginBottom: 10 },
+  startBtn: { backgroundColor: '#C0392B', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  startBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  startBtnMeta: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 1.5, textTransform: 'uppercase' },
+
   flipCard: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)' },
   flipTitle: { fontSize: 13, fontWeight: '700', color: '#2C1F14', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
 
@@ -413,9 +434,12 @@ const styles = StyleSheet.create({
   progressLabel: { fontSize: 13, color: '#7A6651', fontWeight: '600' },
   progressTimer: { fontSize: 18, fontWeight: '700', color: '#C0392B' },
   progressValue: { fontSize: 15, fontWeight: '700', color: '#2C1F14' },
-  track: { height: 8, backgroundColor: 'rgba(44,31,20,0.1)', borderRadius: 4, overflow: 'hidden' },
+  track: { height: 8, backgroundColor: 'rgba(44,31,20,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
   fill: { height: '100%', borderRadius: 4 },
   locationStatus: { marginTop: 8, fontSize: 11, color: '#7A6651', fontStyle: 'italic' },
+
+  finishBtn: { marginTop: 12, backgroundColor: '#3D6142', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  finishBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
   card: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
@@ -426,9 +450,6 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: 'rgba(192,57,43,0.1)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   chipText: { fontSize: 11, fontWeight: '700', color: '#C0392B', letterSpacing: 1, textTransform: 'uppercase' },
 
-  ctaBtn: { backgroundColor: '#C0392B', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
-  ctaBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  ctaBtnMeta: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)', letterSpacing: 1.5, textTransform: 'uppercase' },
   resetBtn: { marginTop: 14, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(44,31,20,0.25)' },
   resetBtnText: { fontSize: 13, fontWeight: '700', color: '#2C1F14' },
 });

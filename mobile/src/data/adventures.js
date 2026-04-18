@@ -1,3 +1,8 @@
+export const ADVENTURE_POINTS = {
+  'penny-hike': 5,
+  'find-the-nature': 8,
+};
+
 export const PENNY_HIKE = {
   id: 'penny-hike',
   title: 'The Penny Hike',
