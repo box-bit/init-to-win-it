@@ -1,76 +1,48 @@
 import {
-  View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
+  View, Text, Image, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
+export default function AdventureDetailScreen({ route, navigation }) {
+  const { adventure } = route.params;
 
-const ADVENTURE = {
-  title: 'Sunset over Wisłok',
-  summary: 'A short walk to one of Rzeszów\'s quietest river benches. The kind of pause that resets a whole week.',
-  duration: '30 min',
-  distance: '1.4 km',
-  location: 'Wisłok riverside',
-  tag: 'Golden hour',
-  hero: require('../../assets/scene-river.jpg'),
-  sections: [
-    {
-      emoji: '🔭',
-      label: "What you'll do",
-      body: "Walk the riverside path past the old footbridge. Find the bench under the willow. Stay through one full color change of the sky.",
-    },
-    {
-      emoji: '🍃',
-      label: 'Focus',
-      body: 'Light movement · Quiet observation · Mood reset',
-      chips: ['Exploration', 'Relaxation'],
-    },
-    {
-      emoji: '🎒',
-      label: 'What to bring',
-      body: 'Comfortable shoes, a light jacket, a thermos if it\'s cold. Phone on do-not-disturb.',
-    },
-    {
-      emoji: '🛡',
-      label: 'Stay safe',
-      body: "Tell someone where you're going. Stick to the lit paths after sunset. Bring a friend if it's your first time.",
-    },
-  ],
-};
-
-export default function ExploreScreen() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* Hero */}
         <View style={styles.hero}>
-          <Image source={ADVENTURE.hero} style={styles.heroImg} resizeMode="cover" />
+          <Image source={adventure.hero} style={styles.heroImg} resizeMode="cover" />
           <LinearGradient
             colors={['rgba(44,31,20,0.45)', 'transparent', '#F5EBD7']}
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.heroTopBar}>
-            <View style={styles.heroBtn}><Text style={styles.heroBtnIcon}>♡</Text></View>
+            <TouchableOpacity style={styles.heroBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.heroBtnIcon}>‹</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.heroBtn}>
+              <Text style={[styles.heroBtnIcon, { color: '#C87941' }]}>♡</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.heroTag}>
-            <Text style={styles.heroTagText}>🧭  {ADVENTURE.tag}</Text>
+            <Text style={styles.heroTagText}>🧭  {adventure.tag}</Text>
           </View>
         </View>
 
         {/* Title + meta */}
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>{ADVENTURE.title}</Text>
-          <Text style={styles.summary}>{ADVENTURE.summary}</Text>
+          <Text style={styles.title}>{adventure.title}</Text>
+          <Text style={styles.summary}>{adventure.summary}</Text>
           <View style={styles.meta}>
-            <Text style={styles.metaItem}>⏱  {ADVENTURE.duration}</Text>
-            <Text style={styles.metaItem}>📍  {ADVENTURE.distance}</Text>
-            <Text style={styles.metaItem}>🗺  {ADVENTURE.location}</Text>
+            <Text style={styles.metaItem}>⏱  {adventure.duration}</Text>
+            <Text style={styles.metaItem}>📍  {adventure.distance}</Text>
+            <Text style={styles.metaItem}>🗺  {adventure.location}</Text>
           </View>
         </View>
 
         {/* Sections */}
-        {ADVENTURE.sections.map((s) => (
+        {adventure.sections.map((s) => (
           <View key={s.label} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIcon}><Text style={{ fontSize: 18 }}>{s.emoji}</Text></View>
@@ -96,7 +68,7 @@ export default function ExploreScreen() {
       <View style={styles.cta}>
         <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
           <Text style={styles.ctaBtnText}>Start adventure</Text>
-          <Text style={styles.ctaBtnMeta}>{ADVENTURE.duration}</Text>
+          <Text style={styles.ctaBtnMeta}>{adventure.duration}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -109,9 +81,9 @@ const styles = StyleSheet.create({
 
   hero: { height: 280, position: 'relative' },
   heroImg: { width: '100%', height: '100%' },
-  heroTopBar: { position: 'absolute', top: 56, right: 20, flexDirection: 'row', gap: 10 },
+  heroTopBar: { position: 'absolute', top: 56, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
   heroBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(245,235,215,0.9)', alignItems: 'center', justifyContent: 'center' },
-  heroBtnIcon: { fontSize: 20, color: '#C87941' },
+  heroBtnIcon: { fontSize: 24, color: '#2C1F14', lineHeight: 28 },
   heroTag: { position: 'absolute', bottom: 24, left: 20, backgroundColor: '#D4A96A', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   heroTagText: { fontSize: 11, fontWeight: '700', color: '#2C1F14', letterSpacing: 1.5, textTransform: 'uppercase' },
 
@@ -130,7 +102,7 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: 'rgba(61,97,66,0.1)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   chipText: { fontSize: 11, fontWeight: '700', color: '#3D6142', letterSpacing: 1, textTransform: 'uppercase' },
 
-  cta: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingTop: 12, backgroundColor: 'transparent' },
+  cta: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingTop: 12 },
   ctaBtn: { backgroundColor: '#C87941', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   ctaBtnText: { fontSize: 17, fontWeight: '700', color: '#F5EBD7' },
   ctaBtnMeta: { fontSize: 12, fontWeight: '600', color: 'rgba(245,235,215,0.8)', letterSpacing: 1.5, textTransform: 'uppercase' },
