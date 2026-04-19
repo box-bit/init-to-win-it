@@ -2,10 +2,6 @@
 
 Welcome to the **MicroAdventure** app, built for the Init-to-Win-It Hackathon. This mobile application is designed to encourage spontaneous exploration and nature connection through "microadventures"—short, accessible, and exciting local challenges.
 
-## Wanna try it on your phone?
-Download `5to9.apk` to your android phone <br>
-Click on it and select install
-
 ## 🚀 The Concept
 
 Microadventures are about finding adventure in your local area. Whether it's leaving your route to chance with a coin flip or identifying local flora, this app gamifies the world around you.
