@@ -11,7 +11,7 @@ import {
   completeAdventure, expireAdventure, resetAdventure,
 } from '../db/database';
 import DirectionSpinner from './GameScreen';
-import { addScore } from '../score';
+import { addScore, addKm } from '../score';
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REQUIRED_SPINS = 5;
@@ -183,6 +183,7 @@ export default function PennyHikeDetailScreen({ route, navigation }) {
     clearInterval(timerRef.current);
     gpsCleanupRef.current?.();
 
+    await addKm(distanceRef.current / 1000);
     const pts = ADVENTURE_POINTS['penny-hike'];
     const totalScore = await addScore(pts);
     navigation.navigate('AdventureComplete', {

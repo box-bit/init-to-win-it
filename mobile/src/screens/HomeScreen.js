@@ -8,8 +8,14 @@ import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
 import { getAvailableAdventuresByMode } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
-  'penny-hike':      { img: require('../../assets/scene-campfire.jpg') },
-  'find-the-nature': { img: require('../../assets/scene-forest.jpg') },
+  'penny-hike':          { img: require('../../assets/scene-campfire.jpg') },
+  'find-the-nature':     { img: require('../../assets/scene-forest.jpg') },
+  'social-flash-mob':    { img: require('../../assets/scene-hills.jpg') },
+  'stranger-compliment': { img: require('../../assets/scene-river.jpg') },
+  'sunrise-patrol':      { img: require('../../assets/scene-river.jpg') },
+  'wild-sit-spot':       { img: require('../../assets/scene-hills.jpg') },
+  'urban-safari':        { img: require('../../assets/scene-campfire.jpg') },
+  'coffee-roulette':     { img: require('../../assets/scene-forest.jpg') },
 };
 
 const AVATAR_IMGS = {
@@ -18,32 +24,43 @@ const AVATAR_IMGS = {
   social_chaos:  require('../../assets/avatar-raccoon.png'),
 };
 
-const FILTERS = ['All', 'Forest', 'Riverside', 'Viewpoint', 'Sunset'];
+const FILTERS = ['All', 'Chaos', 'Nature', 'Social', 'Urban'];
+
+const TAG_FILTER_MAP = { Chaos: 'Chaos', Nature: 'Nature', Social: 'Social', Urban: 'Urban' };
 
 function getScreenForAdventure(adventureId) {
   if (adventureId === 'penny-hike') return 'PennyHike';
   if (adventureId === 'find-the-nature') return 'FindNature';
-  return 'PennyHike';
+  return 'SimpleAdventure';
 }
 
 export default function HomeScreen({ selectedMode, navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
-  const [dbMiniAdventures, setDbMiniAdventures] = useState([]);
+  const [allAdventures, setAllAdventures] = useState([]);
 
   useFocusEffect(useCallback(() => {
     if (!selectedMode) return;
     if (Platform.OS === 'web') {
-      const WEB_MINI_ADVENTURES = [
-        { id: 'penny-hike', title: PENNY_HIKE.title, description: PENNY_HIKE.desc,
-          duration: PENNY_HIKE.duration, tag: PENNY_HIKE.tag, mode_type: 'social_chaos' },
-        { id: 'find-the-nature', title: FIND_NATURE.title, description: FIND_NATURE.desc,
-          duration: FIND_NATURE.duration, tag: FIND_NATURE.tag, mode_type: 'survivalist' },
+      const WEB_ALL = [
+        { id: 'penny-hike',          title: PENNY_HIKE.title,    description: PENNY_HIKE.desc,    duration: PENNY_HIKE.duration,    tag: PENNY_HIKE.tag,    mode_type: 'social_chaos'  },
+        { id: 'find-the-nature',     title: FIND_NATURE.title,   description: FIND_NATURE.desc,   duration: FIND_NATURE.duration,   tag: FIND_NATURE.tag,   mode_type: 'survivalist'   },
+        { id: 'social-flash-mob',    title: 'Invisible Orchestra', description: 'Conduct an invisible orchestra in a public space.', duration: '20 min', tag: 'Social', mode_type: 'social_chaos'  },
+        { id: 'stranger-compliment', title: 'Compliment Run',    description: 'Give 5 genuine compliments to 5 strangers.', duration: '30 min', tag: 'Chaos',  mode_type: 'social_chaos'  },
+        { id: 'sunrise-patrol',      title: 'Sunrise Patrol',    description: 'Watch the city wake up from the highest point near you.', duration: '60 min', tag: 'Nature', mode_type: 'survivalist'   },
+        { id: 'wild-sit-spot',       title: 'The Sit Spot',      description: 'Sit perfectly still in nature for 20 minutes.', duration: '25 min', tag: 'Nature', mode_type: 'survivalist'   },
+        { id: 'urban-safari',        title: 'Urban Safari',      description: 'Photograph 8 signs of human creativity in plain sight.', duration: '45 min', tag: 'Urban', mode_type: 'urban_explore' },
+        { id: 'coffee-roulette',     title: 'Coffee Roulette',   description: "Walk 10 min, enter the first café. Order something new.", duration: '35 min', tag: 'Urban', mode_type: 'urban_explore' },
       ];
-      setDbMiniAdventures(WEB_MINI_ADVENTURES.filter(a => a.mode_type === selectedMode.id));
+      const modeAdventures = WEB_ALL.filter(a => a.mode_type === selectedMode.id);
+      setAllAdventures(modeAdventures);
     } else {
-      setDbMiniAdventures(getAvailableAdventuresByMode(selectedMode.id));
+      setAllAdventures(getAvailableAdventuresByMode(selectedMode.id));
     }
   }, [selectedMode]));
+
+  const displayedAdventures = activeFilter === 'All'
+    ? allAdventures
+    : allAdventures.filter((a) => a.tag === TAG_FILTER_MAP[activeFilter]);
 
   const avatarImg = selectedMode ? AVATAR_IMGS[selectedMode.id] : AVATAR_IMGS.urban_explore;
   const guideName = selectedMode?.title ?? 'Explorer';
@@ -73,10 +90,8 @@ export default function HomeScreen({ selectedMode, navigation }) {
           style={styles.heroCard}
           activeOpacity={0.9}
           onPress={() => {
-            if (dbMiniAdventures.length > 0) {
-              const first = dbMiniAdventures[0];
-              navigation.navigate(getScreenForAdventure(first.id), { selectedMode });
-            }
+            const first = displayedAdventures[0] ?? allAdventures[0];
+            if (first) navigation.navigate(getScreenForAdventure(first.id), { selectedMode, adventureId: first.id });
           }}
         >
           <Image source={require('../../assets/scene-hills.jpg')} style={styles.heroImg} resizeMode="cover" />
@@ -115,13 +130,13 @@ export default function HomeScreen({ selectedMode, navigation }) {
         </View>
 
         {/* Mini adventures from DB */}
-        {dbMiniAdventures.length === 0 && (
+        {displayedAdventures.length === 0 && (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No adventures for your mode yet.</Text>
+            <Text style={styles.emptyText}>No adventures match this filter.</Text>
           </View>
         )}
 
-        {dbMiniAdventures.map((a) => {
+        {displayedAdventures.map((a) => {
           const assets = MINI_ADVENTURE_ASSETS[a.id] ?? MINI_ADVENTURE_ASSETS['penny-hike'];
           const screenName = getScreenForAdventure(a.id);
           return (
@@ -129,7 +144,7 @@ export default function HomeScreen({ selectedMode, navigation }) {
               key={a.id}
               style={[styles.card, styles.miniCard]}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate(screenName, { selectedMode })}
+              onPress={() => navigation.navigate(screenName, { selectedMode, adventureId: a.id })}
             >
               <Image source={assets.img} style={styles.cardImg} resizeMode="cover" />
               <View style={styles.cardBody}>

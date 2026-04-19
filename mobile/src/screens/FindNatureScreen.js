@@ -12,11 +12,43 @@ import {
   startAdventure, getAdventureProgress, completeAdventure,
   expireAdventure, resetAdventure,
 } from '../db/database';
-import { addScore } from '../score';
+import { addScore, addKm } from '../score';
 import { ANTHROPIC_API_KEY } from '../config';
 
 const REQUIRED_PLANTS = 5;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+// ─── GPS helpers ──────────────────────────────────────────────────────────────
+const gpsGetDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const dPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const dLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const watchPositionCrossPlatform = async (onUpdate, onError) => {
+  if (Platform.OS === 'web') {
+    if (!navigator?.geolocation) { onError('Geolocation not supported.'); return () => {}; }
+    const id = navigator.geolocation.watchPosition(
+      (pos) => onUpdate(pos.coords.latitude, pos.coords.longitude),
+      (err) => onError(err.message),
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  } else {
+    const Location = await import('expo-location');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') { onError('Location permission denied.'); return () => {}; }
+    const sub = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+      (loc) => onUpdate(loc.coords.latitude, loc.coords.longitude)
+    );
+    return () => sub.remove();
+  }
+};
 const WEB_PHOTOS_KEY  = 'find_nature_photos';
 const WEB_PROGRESS_KEY = 'find_nature_progress';
 
@@ -129,8 +161,11 @@ export default function FindNatureScreen({ route, navigation }) {
   const [timeLeft, setTimeLeft]   = useState('');
   const [errorMsg, setErrorMsg]   = useState(null);
 
-  const timerRef    = useRef(null);
-  const errorTimer  = useRef(null);
+  const timerRef      = useRef(null);
+  const errorTimer    = useRef(null);
+  const gpsCleanupRef = useRef(null);
+  const lastPosRef    = useRef(null);
+  const distanceRef   = useRef(0);
   const a = FIND_NATURE;
 
   // ── show top error banner, auto-dismiss after 4s ────────────────────────
@@ -189,7 +224,25 @@ export default function FindNatureScreen({ route, navigation }) {
     return () => clearInterval(timerRef.current);
   }, [status, startedAt]);
 
-  useEffect(() => () => { clearTimeout(errorTimer.current); clearInterval(timerRef.current); }, []);
+  useEffect(() => {
+    if (status !== 'in_progress') return;
+    lastPosRef.current = null;
+    distanceRef.current = 0;
+    let cancelled = false;
+    watchPositionCrossPlatform(
+      (lat, lon) => {
+        if (cancelled) return;
+        if (lastPosRef.current) {
+          distanceRef.current += gpsGetDistance(lastPosRef.current.latitude, lastPosRef.current.longitude, lat, lon);
+        }
+        lastPosRef.current = { latitude: lat, longitude: lon };
+      },
+      () => {}
+    ).then((cleanup) => { gpsCleanupRef.current = cleanup; });
+    return () => { cancelled = true; gpsCleanupRef.current?.(); };
+  }, [status]);
+
+  useEffect(() => () => { clearTimeout(errorTimer.current); clearInterval(timerRef.current); gpsCleanupRef.current?.(); }, []);
 
   const validPhotos = photos.filter(p => p.is_plant === 1);
   const validCount  = validPhotos.length;
@@ -224,6 +277,8 @@ export default function FindNatureScreen({ route, navigation }) {
     if (Platform.OS !== 'web') completeAdventure('find-the-nature');
     else webSaveProgress({ status: 'completed', started_at: startedAt });
     clearInterval(timerRef.current);
+    gpsCleanupRef.current?.();
+    await addKm(distanceRef.current / 1000);
 
     const pts = ADVENTURE_POINTS['find-the-nature'];
     const totalScore = await addScore(pts);

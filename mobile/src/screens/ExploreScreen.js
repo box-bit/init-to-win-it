@@ -3,35 +3,34 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
-import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
+import { ADVENTURE_POINTS, ADVENTURE_MAP } from '../data/adventures';
 import { getAllMiniAdventures } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
-  'penny-hike':      { img: require('../../assets/scene-campfire.jpg') },
-  'find-the-nature': { img: require('../../assets/scene-forest.jpg') },
+  'penny-hike':          { img: require('../../assets/scene-campfire.jpg') },
+  'find-the-nature':     { img: require('../../assets/scene-forest.jpg') },
+  'social-flash-mob':    { img: require('../../assets/scene-hills.jpg') },
+  'stranger-compliment': { img: require('../../assets/scene-river.jpg') },
+  'sunrise-patrol':      { img: require('../../assets/scene-river.jpg') },
+  'wild-sit-spot':       { img: require('../../assets/scene-hills.jpg') },
+  'urban-safari':        { img: require('../../assets/scene-campfire.jpg') },
+  'coffee-roulette':     { img: require('../../assets/scene-forest.jpg') },
 };
 
-const FILTERS = ['All', 'Forest', 'Riverside', 'Viewpoint', 'Sunset'];
+const FILTERS = ['All', 'Chaos', 'Nature', 'Social', 'Urban'];
 
-const TAG_FILTER_MAP = {
-  Forest: ['survivalist', 'nature'],
-  Riverside: [],
-  Viewpoint: [],
-  Sunset: [],
-};
+const TAG_FILTER_MAP = { Chaos: 'Chaos', Nature: 'Nature', Social: 'Social', Urban: 'Urban' };
 
 function getScreenForAdventure(adventureId) {
   if (adventureId === 'penny-hike') return 'PennyHike';
   if (adventureId === 'find-the-nature') return 'FindNature';
-  return 'PennyHike';
+  return 'SimpleAdventure';
 }
 
-const WEB_ALL_ADVENTURES = [
-  { id: 'penny-hike', title: PENNY_HIKE.title, description: PENNY_HIKE.desc,
-    duration: PENNY_HIKE.duration, tag: PENNY_HIKE.tag, mode_type: 'social_chaos' },
-  { id: 'find-the-nature', title: FIND_NATURE.title, description: FIND_NATURE.desc,
-    duration: FIND_NATURE.duration, tag: FIND_NATURE.tag, mode_type: 'survivalist' },
-];
+const WEB_ALL_ADVENTURES = Object.values(ADVENTURE_MAP).map((a) => ({
+  id: a.id, title: a.title, description: a.desc, duration: a.duration, tag: a.tag,
+  distance: a.distance,
+}));
 
 export default function ExploreScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -47,10 +46,7 @@ export default function ExploreScreen({ navigation }) {
 
   const filtered = activeFilter === 'All'
     ? adventures
-    : adventures.filter((a) => {
-        const modes = TAG_FILTER_MAP[activeFilter] ?? [];
-        return modes.includes(a.mode_type) || a.tag?.toLowerCase() === activeFilter.toLowerCase();
-      });
+    : adventures.filter((a) => a.tag === TAG_FILTER_MAP[activeFilter]);
 
   return (
     <View style={styles.container}>
@@ -94,7 +90,7 @@ export default function ExploreScreen({ navigation }) {
               key={a.id}
               style={[styles.card, styles.miniCard]}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('Home', { screen: screenName })}
+              onPress={() => navigation.navigate('Home', { screen: screenName, params: { adventureId: a.id } })}
             >
               <Image source={assets.img} style={styles.cardImg} resizeMode="cover" />
               <View style={styles.cardBody}>

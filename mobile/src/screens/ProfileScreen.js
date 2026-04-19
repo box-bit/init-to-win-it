@@ -1,15 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const STATS = [
-  { label: 'Adventures', value: '12' },
-  { label: 'km walked',  value: '18.4' },
-];
+import { getTotalKm } from '../score';
+import { getCompletedAdventures } from '../db/database';
 
 export default function ProfileScreen({ navigation }) {
-  const [profile, setProfile] = useState({ name: '', surname: '', picture: null });
+  const [profile, setProfile]         = useState({ name: '', surname: '', picture: null });
+  const [adventureCount, setAdventureCount] = useState(0);
+  const [kmWalked, setKmWalked]       = useState(0);
 
   useFocusEffect(useCallback(() => {
     async function load() {
@@ -17,11 +16,23 @@ export default function ProfileScreen({ navigation }) {
       const surname = await AsyncStorage.getItem('profile_surname') ?? '';
       const picture = await AsyncStorage.getItem('profile_picture') ?? null;
       setProfile({ name, surname, picture });
+
+      const km = await getTotalKm();
+      setKmWalked(km);
+
+      if (Platform.OS !== 'web') {
+        setAdventureCount(getCompletedAdventures().length);
+      }
     }
     load();
   }, []));
 
   const displayName = [profile.name, profile.surname].filter(Boolean).join(' ') || 'Explorer';
+
+  const STATS = [
+    { label: 'Adventures', value: String(adventureCount) },
+    { label: 'km walked',  value: kmWalked.toFixed(1) },
+  ];
 
   return (
     <View style={styles.container}>
@@ -47,22 +58,24 @@ export default function ProfileScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Settings rows */}
+        {/* Settings */}
         <Text style={styles.sectionTitle}>Settings</Text>
-        <TouchableOpacity
-          style={styles.row}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.rowText}>Edit profile</Text>
           <Text style={styles.rowArrow}>›</Text>
         </TouchableOpacity>
-        {['Notifications', 'Privacy', 'About'].map((item) => (
-          <TouchableOpacity key={item} style={styles.row} activeOpacity={0.7}>
-            <Text style={styles.rowText}>{item}</Text>
-            <Text style={styles.rowArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('Notifications')}>
+          <Text style={styles.rowText}>Notifications</Text>
+          <Text style={styles.rowArrow}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('Privacy')}>
+          <Text style={styles.rowText}>Privacy</Text>
+          <Text style={styles.rowArrow}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => navigation.navigate('About')}>
+          <Text style={styles.rowText}>About</Text>
+          <Text style={styles.rowArrow}>›</Text>
+        </TouchableOpacity>
 
         <View style={{ height: 100 }} />
       </ScrollView>
