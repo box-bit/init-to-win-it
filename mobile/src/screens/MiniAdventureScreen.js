@@ -94,7 +94,6 @@ function formatTimeLeft(startedAt) {
 function RadarMap({ bearing, distToDest, arrived, hasDestination, locationStatus }) {
   const center = MAP_SIZE / 2;
 
-  // Destination dot position (user always at center)
   let destX = null;
   let destY = null;
   if (hasDestination && distToDest !== null) {
@@ -102,7 +101,6 @@ function RadarMap({ bearing, distToDest, arrived, hasDestination, locationStatus
     const bearingRad = (bearing * Math.PI) / 180;
     const rawX = center + Math.sin(bearingRad) * scale * MAP_RADIUS;
     const rawY = center - Math.cos(bearingRad) * scale * MAP_RADIUS;
-    // Clamp to map boundary
     const dx = rawX - center;
     const dy = rawY - center;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -121,72 +119,44 @@ function RadarMap({ bearing, distToDest, arrived, hasDestination, locationStatus
 
   return (
     <View style={map.container}>
-      {/* Grid rings */}
       {[0.33, 0.66, 1].map((r) => (
-        <View
-          key={r}
-          style={[map.ring, {
-            width: MAP_RADIUS * 2 * r,
-            height: MAP_RADIUS * 2 * r,
-            borderRadius: MAP_RADIUS * r,
-            left: center - MAP_RADIUS * r,
-            top: center - MAP_RADIUS * r,
-          }]}
-        />
+        <View key={r} style={[map.ring, {
+          width: MAP_RADIUS * 2 * r, height: MAP_RADIUS * 2 * r,
+          borderRadius: MAP_RADIUS * r,
+          left: center - MAP_RADIUS * r, top: center - MAP_RADIUS * r,
+        }]} />
       ))}
-
-      {/* Cross hairs */}
       <View style={[map.crossH, { top: center - 0.5, left: 16, right: 16 }]} />
       <View style={[map.crossV, { left: center - 0.5, top: 16, bottom: 16 }]} />
-
-      {/* Compass labels */}
       <Text style={[map.compass, { top: 4, left: center - 6 }]}>N</Text>
       <Text style={[map.compass, { bottom: 4, left: center - 5 }]}>S</Text>
       <Text style={[map.compass, { left: 4, top: center - 8 }]}>W</Text>
       <Text style={[map.compass, { right: 4, top: center - 8 }]}>E</Text>
 
-      {/* Line from user to destination */}
       {destX !== null && (
-        <View
-          style={[map.line, lineStyle(center, center, destX, destY)]}
-        />
+        <View style={[map.line, lineStyle(center, center, destX, destY)]} />
       )}
-
-      {/* Destination pin */}
       {destX !== null && (
         <View style={[map.pin, arrived && map.pinArrived, {
-          left: destX - PIN / 2,
-          top: destY - PIN / 2,
-          width: PIN,
-          height: PIN,
-          borderRadius: PIN / 2,
+          left: destX - PIN / 2, top: destY - PIN / 2,
+          width: PIN, height: PIN, borderRadius: PIN / 2,
         }]}>
           <Text style={map.pinText}>{arrived ? '✓' : '📍'}</Text>
         </View>
       )}
 
-      {/* User dot */}
       <View style={[map.userDot, {
-        left: center - DOT / 2,
-        top: center - DOT / 2,
-        width: DOT + 8,
-        height: DOT + 8,
-        borderRadius: (DOT + 8) / 2,
+        left: center - DOT / 2, top: center - DOT / 2,
+        width: DOT + 8, height: DOT + 8, borderRadius: (DOT + 8) / 2,
       }]} />
       <View style={[map.userDotInner, {
-        left: center - DOT / 2 + 3,
-        top: center - DOT / 2 + 3,
-        width: DOT + 2,
-        height: DOT + 2,
-        borderRadius: (DOT + 2) / 2,
+        left: center - DOT / 2 + 3, top: center - DOT / 2 + 3,
+        width: DOT + 2, height: DOT + 2, borderRadius: (DOT + 2) / 2,
       }]} />
 
-      {/* Status overlay */}
       {!hasDestination && (
         <View style={map.statusOverlay}>
-          <Text style={map.statusText}>
-            {locationStatus || 'Waiting for GPS…'}
-          </Text>
+          <Text style={map.statusText}>{locationStatus || 'Acquiring GPS…'}</Text>
         </View>
       )}
     </View>
@@ -198,12 +168,7 @@ function lineStyle(x1, y1, x2, y2) {
   const dy = y2 - y1;
   const length = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-  return {
-    width: length,
-    transform: [{ rotate: `${angle}deg` }],
-    left: x1,
-    top: y1,
-  };
+  return { width: length, transform: [{ rotate: `${angle}deg` }], left: x1, top: y1 };
 }
 
 const map = StyleSheet.create({
@@ -227,7 +192,6 @@ export default function MiniAdventureScreen({ route, navigation }) {
   const [status, setStatus]                 = useState('idle');
   const [startedAt, setStartedAt]           = useState(null);
   const [timeLeft, setTimeLeft]             = useState('');
-  const [timePct, setTimePct]               = useState(0);
   const [locationStatus, setLocationStatus] = useState('');
   const [destination, setDestination]       = useState(null);
   const [distToDest, setDistToDest]         = useState(null);
@@ -240,7 +204,6 @@ export default function MiniAdventureScreen({ route, navigation }) {
   const distanceRef    = useRef(0);
   const destinationRef = useRef(null);
 
-  // ── load progress ────────────────────────────────────────────────────────
   const refresh = useCallback(async () => {
     const row = await loadProgress();
     if (!row) { setStatus('idle'); return; }
@@ -260,29 +223,21 @@ export default function MiniAdventureScreen({ route, navigation }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // ── countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
     if (status !== 'in_progress' || !startedAt) return;
-    const tick = () => {
-      const left = Math.max(0, TWO_HOURS_MS - (Date.now() - startedAt));
-      setTimeLeft(formatTimeLeft(startedAt));
-      setTimePct(1 - left / TWO_HOURS_MS);
-      if (left <= 0) { clearInterval(timerRef.current); refresh(); }
-    };
+    const tick = () => setTimeLeft(formatTimeLeft(startedAt));
     tick();
-    timerRef.current = setInterval(tick, 1000);
+    timerRef.current = setInterval(() => {
+      if (TWO_HOURS_MS - (Date.now() - startedAt) <= 0) { clearInterval(timerRef.current); refresh(); return; }
+      tick();
+    }, 1000);
     return () => clearInterval(timerRef.current);
   }, [status, startedAt, refresh]);
 
-  // ── GPS tracking (always on while screen open) ────────────────────────────
+  // GPS always running while screen is open
   useEffect(() => {
     lastPosRef.current = null;
-    if (status === 'in_progress') {
-      distanceRef.current = 0;
-      setDistanceWalked(0);
-    }
-    setLocationStatus('Requesting location…');
-
+    setLocationStatus('Acquiring GPS…');
     let cancelled = false;
     watchPositionCrossPlatform(
       (lat, lon) => {
@@ -302,16 +257,14 @@ export default function MiniAdventureScreen({ route, navigation }) {
       },
       (err) => { if (!cancelled) setLocationStatus('⚠️ ' + err); }
     ).then((cleanup) => { gpsCleanupRef.current = cleanup; });
-
     return () => { cancelled = true; gpsCleanupRef.current?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  // ── actions ──────────────────────────────────────────────────────────────
   async function handleStart() {
     const pos = lastPosRef.current;
     if (!pos) {
-      Alert.alert('Location needed', 'Still acquiring GPS signal. Try again in a moment.');
+      Alert.alert('No GPS signal', 'Still acquiring your location. Try again in a moment.');
       return;
     }
     const dest = generateDestination(pos.latitude, pos.longitude);
@@ -319,7 +272,6 @@ export default function MiniAdventureScreen({ route, navigation }) {
     setDestination(dest);
     setDistToDest(getDistance(pos.latitude, pos.longitude, dest.latitude, dest.longitude));
     setBearing(getBearing(pos.latitude, pos.longitude, dest.latitude, dest.longitude));
-
     const now = Date.now();
     if (Platform.OS !== 'web') startAdventure(ADVENTURE_ID);
     else await saveProgress({ adventure_id: ADVENTURE_ID, status: 'in_progress', started_at: now, destination: dest });
@@ -331,7 +283,11 @@ export default function MiniAdventureScreen({ route, navigation }) {
   async function handleFinish() {
     const arrived = distToDest !== null && distToDest <= COMPLETION_RADIUS_M;
     if (!arrived) {
-      Alert.alert('Not there yet', `You need to be within ${COMPLETION_RADIUS_M}m.\n\nCurrently ${distToDest !== null ? Math.round(distToDest) : '?'}m away.`);
+      const dist = distToDest !== null ? Math.round(distToDest) : '?';
+      Alert.alert(
+        'Not at the destination',
+        `You need to be within ${COMPLETION_RADIUS_M}m of the pin on the map.\n\nYou are currently ${dist}m away.`
+      );
       return;
     }
     if (Platform.OS !== 'web') completeAdventure(ADVENTURE_ID);
@@ -362,7 +318,6 @@ export default function MiniAdventureScreen({ route, navigation }) {
     setDistanceWalked(0);
     setDistToDest(null);
     setDestination(null);
-    setTimePct(0);
     setTimeLeft('');
   }
 
@@ -387,16 +342,16 @@ export default function MiniAdventureScreen({ route, navigation }) {
         <View style={styles.titleBlock}>
           <Text style={styles.title}>Go to the spot</Text>
           <Text style={styles.summary}>
-            Walk to a random location within 2km. Leave a handwritten message on paper when you arrive.
+            Walk to the pin on the map and leave a handwritten message on paper when you arrive.
           </Text>
         </View>
 
-        {/* ── EXPIRED ── */}
+        {/* EXPIRED */}
         {status === 'expired' && (
           <View style={[styles.stateCard, styles.stateCardExpired]}>
             <Text style={styles.stateEmoji}>⌛</Text>
             <Text style={[styles.stateTitle, { color: '#C0392B' }]}>Time's up</Text>
-            <Text style={styles.stateDesc}>Adventure expired. Try again whenever you're ready.</Text>
+            <Text style={styles.stateDesc}>Adventure expired.</Text>
             <TouchableOpacity style={styles.resetBtn} onPress={handleReset} activeOpacity={0.8}>
               <Text style={styles.resetBtnText}>Try again</Text>
             </TouchableOpacity>
@@ -406,78 +361,34 @@ export default function MiniAdventureScreen({ route, navigation }) {
         {status !== 'expired' && (
           <View style={styles.mainCard}>
 
-            {/* ── IDLE: start button ── */}
-            {status === 'idle' && (
+            {/* Single toggle button */}
+            {status === 'idle' ? (
               <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
                 <Text style={styles.startBtnText}>Start Adventure</Text>
                 <Text style={styles.startBtnMeta}>2 HOURS</Text>
               </TouchableOpacity>
-            )}
-
-            {/* ── IN PROGRESS: time bar + finish ── */}
-            {status === 'in_progress' && (
-              <>
-                {/* Time bar */}
-                <View style={styles.timeBarBlock}>
-                  <View style={styles.timeBarRow}>
-                    <Text style={styles.timeBarLabel}>⏳  Time remaining</Text>
-                    <Text style={styles.timeBarValue}>{timeLeft}</Text>
-                  </View>
-                  <View style={styles.timeBarTrack}>
-                    <View style={[styles.timeBarFill, { width: `${timePct * 100}%` }]} />
-                  </View>
-                </View>
-
-                {/* Distance info */}
-                <View style={styles.distRow}>
-                  <View style={styles.distItem}>
-                    <Text style={styles.distLabel}>🚶 Walked</Text>
-                    <Text style={styles.distValue}>{Math.round(distanceWalked)}m</Text>
-                  </View>
-                  <View style={styles.distDivider} />
-                  <View style={styles.distItem}>
-                    <Text style={styles.distLabel}>🎯 To destination</Text>
-                    <Text style={[styles.distValue, arrived && { color: '#3D6142' }]}>
-                      {distToDest !== null ? `${Math.round(distToDest)}m` : '…'}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* Map — always shown (idle + in_progress) */}
-            <View style={styles.mapWrapper}>
-              <RadarMap
-                bearing={bearing}
-                distToDest={distToDest}
-                arrived={arrived}
-                hasDestination={!!destination}
-                locationStatus={locationStatus}
-              />
-              {destination && distToDest !== null && (
-                <Text style={styles.mapCaption}>
-                  {arrived
-                    ? '✅ You\'re at the destination!'
-                    : `📍 ${Math.round(distToDest)}m to destination`}
-                </Text>
-              )}
-              {!destination && (
-                <Text style={styles.mapCaption}>Your position · destination appears after start</Text>
-              )}
-            </View>
-
-            {/* Finish button */}
-            {status === 'in_progress' && (
-              <TouchableOpacity
-                style={[styles.finishBtn, !arrived && styles.finishBtnDisabled]}
-                onPress={handleFinish}
-                activeOpacity={arrived ? 0.85 : 0.6}
-              >
-                <Text style={styles.finishBtnText}>
-                  {arrived ? 'Finish Adventure ✓' : `Get within 25m to finish`}
-                </Text>
+            ) : (
+              <TouchableOpacity style={[styles.finishBtn, arrived && styles.finishBtnReady]} onPress={handleFinish} activeOpacity={0.85}>
+                <Text style={styles.finishBtnText}>Finish Adventure</Text>
+                {status === 'in_progress' && (
+                  <Text style={styles.finishBtnMeta}>{arrived ? '✓ At destination' : timeLeft}</Text>
+                )}
               </TouchableOpacity>
             )}
+
+            {/* Map */}
+            <RadarMap
+              bearing={bearing}
+              distToDest={distToDest}
+              arrived={arrived}
+              hasDestination={!!destination}
+              locationStatus={locationStatus}
+            />
+            <Text style={styles.mapCaption}>
+              {destination && distToDest !== null
+                ? arrived ? '✅ You are at the destination' : `📍 ${Math.round(distToDest)}m to destination`
+                : 'Your position · destination appears after start'}
+            </Text>
 
           </View>
         )}
@@ -489,8 +400,7 @@ export default function MiniAdventureScreen({ route, navigation }) {
             <Text style={styles.cardLabel}>The task</Text>
           </View>
           <Text style={styles.cardBody}>
-            Walk to the pin on the map. Within 25 metres the finish button unlocks.
-            Leave a handwritten message on paper — a word, a thought, a drawing.
+            Walk to the pin. Once you arrive (within 25m), press Finish Adventure and leave a handwritten note at the spot.
           </Text>
           <View style={styles.chips}>
             <View style={styles.chip}><Text style={styles.chipText}>Urban</Text></View>
@@ -514,7 +424,6 @@ export default function MiniAdventureScreen({ route, navigation }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5EBD7' },
   scroll: { paddingBottom: 16 },
@@ -542,25 +451,12 @@ const styles = StyleSheet.create({
   startBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
   startBtnMeta: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5 },
 
-  timeBarBlock: { gap: 6 },
-  timeBarRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeBarLabel: { fontSize: 12, fontWeight: '600', color: '#7A6651' },
-  timeBarValue: { fontSize: 17, fontWeight: '700', color: '#C0392B' },
-  timeBarTrack: { height: 10, backgroundColor: 'rgba(44,31,20,0.1)', borderRadius: 5, overflow: 'hidden' },
-  timeBarFill: { height: '100%', backgroundColor: '#C0392B', borderRadius: 5 },
+  finishBtn: { backgroundColor: 'rgba(61,97,66,0.35)', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  finishBtnReady: { backgroundColor: '#3D6142', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  finishBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  finishBtnMeta: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 1 },
 
-  distRow: { flexDirection: 'row', backgroundColor: 'rgba(44,31,20,0.04)', borderRadius: 14, padding: 12 },
-  distItem: { flex: 1, alignItems: 'center', gap: 2 },
-  distLabel: { fontSize: 11, color: '#7A6651', fontWeight: '600' },
-  distValue: { fontSize: 18, fontWeight: '700', color: '#2C1F14' },
-  distDivider: { width: 1, backgroundColor: 'rgba(44,31,20,0.1)', marginVertical: 2 },
-
-  mapWrapper: { alignItems: 'center', gap: 8 },
-  mapCaption: { fontSize: 12, color: '#7A6651', fontStyle: 'italic', textAlign: 'center' },
-
-  finishBtn: { backgroundColor: '#3D6142', borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
-  finishBtnDisabled: { backgroundColor: 'rgba(61,97,66,0.3)' },
-  finishBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  mapCaption: { fontSize: 12, color: '#7A6651', fontStyle: 'italic', textAlign: 'center', marginTop: -6 },
 
   card: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
