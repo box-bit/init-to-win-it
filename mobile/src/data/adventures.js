@@ -7,6 +7,7 @@ export const ADVENTURE_POINTS = {
   'wild-sit-spot':       5,
   'urban-safari':        8,
   'coffee-roulette':     6,
+  'mini-adventure':      6,
 };
 
 // ─── Social Chaos ─────────────────────────────────────────────────────────────

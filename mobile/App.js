@@ -20,12 +20,14 @@ import NotificationsScreen from './src/screens/NotificationsScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import ModeSelectScreen from './src/screens/ModeSelectScreen';
+import MiniAdventureScreen from './src/screens/MiniAdventureScreen';
 import CustomTabBar from './src/components/CustomTabBar';
 import { initDB } from './src/db/database';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
 
 function ProfileNavigator() {
   return (
@@ -48,8 +50,8 @@ function HomeNavigator({ selectedMode }) {
       <HomeStack.Screen name="AdventureDetail" component={AdventureDetailScreen} />
       <HomeStack.Screen name="PennyHike" component={PennyHikeDetailScreen} />
       <HomeStack.Screen name="FindNature" component={FindNatureScreen} />
-      <HomeStack.Screen name="AdventureComplete" component={AdventureCompleteScreen} />
       <HomeStack.Screen name="SimpleAdventure" component={SimpleAdventureScreen} />
+      <HomeStack.Screen name="MiniAdventure" component={MiniAdventureScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -91,20 +93,33 @@ export default function App() {
     );
   }
 
+  function TabNavigator() {
+    return (
+      <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Home">
+          {() => <HomeNavigator selectedMode={selectedMode} />}
+        </Tab.Screen>
+        <Tab.Screen name="Explore" component={ExploreScreen} />
+        <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Tab.Screen name="Profile" component={ProfileNavigator} />
+      </Tab.Navigator>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Tab.Navigator
-          tabBar={(props) => <CustomTabBar {...props} />}
-          screenOptions={{ headerShown: false }}
-        >
-          <Tab.Screen name="Home">
-            {() => <HomeNavigator selectedMode={selectedMode} />}
-          </Tab.Screen>
-          <Tab.Screen name="Explore" component={ExploreScreen} />
-          <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
-          <Tab.Screen name="Profile" component={ProfileNavigator} />
-        </Tab.Navigator>
+        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+          <RootStack.Screen name="Tabs" component={TabNavigator} />
+          <RootStack.Screen
+            name="AdventureComplete"
+            component={AdventureCompleteScreen}
+            options={{ presentation: 'fullScreenModal' }}
+          />
+        </RootStack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );

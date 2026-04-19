@@ -85,6 +85,8 @@ export function initDB() {
   }
 
   seedMiniAdventures();
+  seedMiniAdventureEntry();
+  pruneRemovedAdventures();
 }
 
 function seedMiniAdventures() {
@@ -128,26 +130,35 @@ function seedMiniAdventures() {
     );
   }
 
-  const seeds = [
-    ['social-flash-mob', 'Invisible Orchestra', 'Conduct an invisible orchestra in a public space for 5 minutes. See who reacts.', 'Walk into a public space — a plaza, a park, a bus stop. Start conducting an invisible orchestra. Go full maestro and observe the world around you.', '20 min', '0.5 km', 'Any public square', 'Social', 'social_chaos'],
-    ['stranger-compliment', 'Compliment Run', 'Give 5 genuine compliments to 5 different strangers in 30 minutes.', 'Head out with one mission: find 5 strangers and give each a genuine, specific compliment. No cringe, no flirting — just honest human connection.', '30 min', '1 km', 'Town centre', 'Chaos', 'social_chaos'],
-    ['sunrise-patrol', 'Sunrise Patrol', 'Find the highest accessible point near you and watch the city wake up at dawn.', 'Set your alarm before sunrise. Find the highest point you can reach on foot — a hill, a rooftop car park, a bridge. Get there before the sun crests.', '60 min', '2–3 km', 'Your city', 'Nature', 'survivalist'],
-    ['wild-sit-spot', 'The Sit Spot', 'Find a patch of nature. Sit perfectly still for 20 minutes. No phone. Just listen.', 'Walk into any green space and find a spot that feels right. Sit completely still for 20 minutes. Count every distinct sound you can hear.', '25 min', '0.5 km', 'Any park or green space', 'Nature', 'survivalist'],
-    ['urban-safari', 'Urban Safari', 'Photograph 8 signs of human creativity hidden in plain sight — murals, stickers, odd architecture.', 'Your city is full of art that most people walk past. Your mission: photograph 8 examples of human creativity in unexpected places.', '45 min', '1–2 km', 'City centre', 'Urban', 'urban_explore'],
-    ['coffee-roulette', 'Coffee Roulette', "Walk in a random direction for 10 minutes and enter the first café you see. Order something you've never tried.", "No Google Maps. Walk in any direction for exactly 10 minutes, then enter the first café or bar you see. Order something you've never had.", '35 min', '1 km', 'Your neighbourhood', 'Urban', 'urban_explore'],
-  ];
+}
 
-  for (const [id, title, description, summary, duration, distance, location, tag, mode_type] of seeds) {
-    const exists = db.getFirstSync('SELECT id FROM mini_adventures WHERE id = ?', [id]);
-    if (!exists) {
-      db.runSync(
-        `INSERT INTO mini_adventures (id, title, description, summary, duration, distance, location, tag, mode_type)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, title, description, summary, duration, distance, location, tag, mode_type]
-      );
-    }
+function pruneRemovedAdventures() {
+  if (!db) return;
+  const keep = ['penny-hike', 'find-the-nature', 'mini-adventure'];
+  const placeholders = keep.map(() => '?').join(', ');
+  db.runSync(`DELETE FROM mini_adventures WHERE id NOT IN (${placeholders})`, keep);
+}
+
+function seedMiniAdventureEntry() {
+  if (!db) return;
+  const exists = db.getFirstSync('SELECT id FROM mini_adventures WHERE id = ?', ['mini-adventure']);
+  if (!exists) {
+    db.runSync(
+      `INSERT INTO mini_adventures (id, title, description, summary, duration, distance, location, tag, mode_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'mini-adventure',
+        'Leave a Message',
+        'Walk to a nearby random location and leave a handwritten message on paper.',
+        'A random outdoor spot within 2km has been chosen for you. Walk there and leave a handwritten message at the location.',
+        '2 hours',
+        'Up to 2 km',
+        'Nearby',
+        'Urban',
+        'urban_explore',
+      ]
+    );
   }
-
 }
 
 export function getAllMiniAdventures() {

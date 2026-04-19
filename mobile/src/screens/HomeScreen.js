@@ -16,6 +16,7 @@ const MINI_ADVENTURE_ASSETS = {
   'wild-sit-spot':       { img: require('../../assets/scene-hills.jpg') },
   'urban-safari':        { img: require('../../assets/scene-campfire.jpg') },
   'coffee-roulette':     { img: require('../../assets/scene-forest.jpg') },
+  'mini-adventure':      { img: require('../../assets/scene-hills.jpg') },
 };
 
 const AVATAR_IMGS = {
@@ -31,6 +32,7 @@ const TAG_FILTER_MAP = { Chaos: 'Chaos', Nature: 'Nature', Social: 'Social', Urb
 function getScreenForAdventure(adventureId) {
   if (adventureId === 'penny-hike') return 'PennyHike';
   if (adventureId === 'find-the-nature') return 'FindNature';
+  if (adventureId === 'mini-adventure') return 'MiniAdventure';
   return 'SimpleAdventure';
 }
 
@@ -42,14 +44,9 @@ export default function HomeScreen({ selectedMode, navigation }) {
     if (!selectedMode) return;
     if (Platform.OS === 'web') {
       const WEB_ALL = [
-        { id: 'penny-hike',          title: PENNY_HIKE.title,    description: PENNY_HIKE.desc,    duration: PENNY_HIKE.duration,    tag: PENNY_HIKE.tag,    mode_type: 'social_chaos'  },
-        { id: 'find-the-nature',     title: FIND_NATURE.title,   description: FIND_NATURE.desc,   duration: FIND_NATURE.duration,   tag: FIND_NATURE.tag,   mode_type: 'survivalist'   },
-        { id: 'social-flash-mob',    title: 'Invisible Orchestra', description: 'Conduct an invisible orchestra in a public space.', duration: '20 min', tag: 'Social', mode_type: 'social_chaos'  },
-        { id: 'stranger-compliment', title: 'Compliment Run',    description: 'Give 5 genuine compliments to 5 strangers.', duration: '30 min', tag: 'Chaos',  mode_type: 'social_chaos'  },
-        { id: 'sunrise-patrol',      title: 'Sunrise Patrol',    description: 'Watch the city wake up from the highest point near you.', duration: '60 min', tag: 'Nature', mode_type: 'survivalist'   },
-        { id: 'wild-sit-spot',       title: 'The Sit Spot',      description: 'Sit perfectly still in nature for 20 minutes.', duration: '25 min', tag: 'Nature', mode_type: 'survivalist'   },
-        { id: 'urban-safari',        title: 'Urban Safari',      description: 'Photograph 8 signs of human creativity in plain sight.', duration: '45 min', tag: 'Urban', mode_type: 'urban_explore' },
-        { id: 'coffee-roulette',     title: 'Coffee Roulette',   description: "Walk 10 min, enter the first café. Order something new.", duration: '35 min', tag: 'Urban', mode_type: 'urban_explore' },
+        { id: 'penny-hike',      title: PENNY_HIKE.title,   description: PENNY_HIKE.desc,   duration: PENNY_HIKE.duration,   tag: PENNY_HIKE.tag,   mode_type: 'social_chaos'  },
+        { id: 'find-the-nature', title: FIND_NATURE.title,  description: FIND_NATURE.desc,  duration: FIND_NATURE.duration,  tag: FIND_NATURE.tag,  mode_type: 'survivalist'   },
+        { id: 'mini-adventure',  title: 'Leave a Message',  description: 'Walk to a nearby random location and leave a handwritten message.', duration: '2 hours', tag: 'Urban', mode_type: 'urban_explore' },
       ];
       const modeAdventures = WEB_ALL.filter(a => a.mode_type === selectedMode.id);
       setAllAdventures(modeAdventures);

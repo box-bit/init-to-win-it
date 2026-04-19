@@ -15,6 +15,7 @@ const MINI_ADVENTURE_ASSETS = {
   'wild-sit-spot':       { img: require('../../assets/scene-hills.jpg') },
   'urban-safari':        { img: require('../../assets/scene-campfire.jpg') },
   'coffee-roulette':     { img: require('../../assets/scene-forest.jpg') },
+  'mini-adventure':      { img: require('../../assets/scene-hills.jpg') },
 };
 
 const FILTERS = ['All', 'Chaos', 'Nature', 'Social', 'Urban'];
@@ -24,13 +25,15 @@ const TAG_FILTER_MAP = { Chaos: 'Chaos', Nature: 'Nature', Social: 'Social', Urb
 function getScreenForAdventure(adventureId) {
   if (adventureId === 'penny-hike') return 'PennyHike';
   if (adventureId === 'find-the-nature') return 'FindNature';
+  if (adventureId === 'mini-adventure') return 'MiniAdventure';
   return 'SimpleAdventure';
 }
 
-const WEB_ALL_ADVENTURES = Object.values(ADVENTURE_MAP).map((a) => ({
-  id: a.id, title: a.title, description: a.desc, duration: a.duration, tag: a.tag,
-  distance: a.distance,
-}));
+const WEB_ALL_ADVENTURES = [
+  { id: 'penny-hike',      title: ADVENTURE_MAP['penny-hike'].title,      description: ADVENTURE_MAP['penny-hike'].desc,      duration: ADVENTURE_MAP['penny-hike'].duration,      tag: ADVENTURE_MAP['penny-hike'].tag,      distance: ADVENTURE_MAP['penny-hike'].distance },
+  { id: 'find-the-nature', title: ADVENTURE_MAP['find-the-nature'].title,  description: ADVENTURE_MAP['find-the-nature'].desc,  duration: ADVENTURE_MAP['find-the-nature'].duration,  tag: ADVENTURE_MAP['find-the-nature'].tag,  distance: ADVENTURE_MAP['find-the-nature'].distance },
+  { id: 'mini-adventure',  title: 'Leave a Message', description: 'Walk to a nearby random location and leave a handwritten message on paper.', duration: '2 hours', tag: 'Urban', distance: 'Up to 2 km' },
+];
 
 export default function ExploreScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
