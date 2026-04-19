@@ -32,7 +32,8 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-location"
+      "expo-location",
+      "expo-navigation-bar"
     ],
     "extra": {
       "eas": {

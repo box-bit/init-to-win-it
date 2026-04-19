@@ -2,17 +2,17 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TABS = [
-  { name: 'Home',        emoji: '🏠', label: 'Home'  },
+  { name: 'Home',        emoji: '🏠', label: 'Home'   },
   { name: 'Explore',     emoji: '🔍', label: 'Explore' },
-  { name: 'Leaderboard', emoji: '🏆', label: 'Board' },
-  { name: 'Profile',     emoji: '👤', label: 'You'   },
+  { name: 'Leaderboard', emoji: '🏆', label: 'Board'  },
+  { name: 'Profile',     emoji: '👤', label: 'You'    },
 ];
 
 export default function CustomTabBar({ state, navigation }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.pill}>
         {TABS.map((tab, index) => {
           const active = state.index === index;
@@ -35,13 +35,9 @@ export default function CustomTabBar({ state, navigation }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    backgroundColor: '#F5EBD7',
     paddingHorizontal: 16,
     paddingTop: 10,
-    backgroundColor: 'transparent',
   },
   pill: {
     flexDirection: 'row',

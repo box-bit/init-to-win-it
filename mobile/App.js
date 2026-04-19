@@ -2,6 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -57,6 +58,15 @@ export default function App() {
   const [selectedMode, setSelectedMode] = useState(null);
   const [modeChosen, setModeChosen] = useState(false);
   const [dbReady, setDbReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      import('expo-navigation-bar').then((NavBar) => {
+        NavBar.setVisibilityAsync('hidden');
+        NavBar.setBehaviorAsync('overlay-swipe');
+      }).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     async function setup() {

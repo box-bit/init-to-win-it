@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
-import { getAvailableAdventuresByMode } from '../db/database';
+import { getMiniAdventuresByMode } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
   'penny-hike':          { img: require('../../assets/scene-campfire.jpg') },
@@ -54,7 +54,7 @@ export default function HomeScreen({ selectedMode, navigation }) {
       const modeAdventures = WEB_ALL.filter(a => a.mode_type === selectedMode.id);
       setAllAdventures(modeAdventures);
     } else {
-      setAllAdventures(getAvailableAdventuresByMode(selectedMode.id));
+      setAllAdventures(getMiniAdventuresByMode(selectedMode.id));
     }
   }, [selectedMode]));
 
@@ -80,9 +80,6 @@ export default function HomeScreen({ selectedMode, navigation }) {
             <Text style={styles.headerSub}>{dayLabel}</Text>
             <Text style={styles.headerTitle}>Ready, {guideName}?</Text>
           </View>
-          <TouchableOpacity style={styles.mapBtn}>
-            <Text style={styles.mapBtnIcon}>🗺</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Hero card */}
@@ -124,7 +121,7 @@ export default function HomeScreen({ selectedMode, navigation }) {
             <Text style={styles.sectionTitle}>Micro-adventures</Text>
             <Text style={styles.sectionSub}>close to you</Text>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Explore')}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
