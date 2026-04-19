@@ -29,9 +29,10 @@ export function initDB() {
 
     CREATE TABLE IF NOT EXISTS adventure_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      adventure_id TEXT NOT NULL UNIQUE,
+      adventure_id TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'in_progress',
       started_at INTEGER NOT NULL,
+      completed_at INTEGER,
       spins_count INTEGER DEFAULT 0
     );
 
@@ -44,9 +45,44 @@ export function initDB() {
     );
   `);
 
-  // TEMP DEV RESET — remove after testing
-  db.runSync("DELETE FROM adventure_progress WHERE adventure_id = 'find-the-nature'");
-  db.runSync("DELETE FROM nature_photos");
+  // Migration: add completed_at column if missing
+  try {
+    db.execSync('ALTER TABLE adventure_progress ADD COLUMN completed_at INTEGER');
+  } catch (_) {}
+
+  // Migration: remove UNIQUE constraint from adventure_id (allows multiple completions)
+  try {
+    const tableInfo = db.getFirstSync(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='adventure_progress'"
+    );
+    if (tableInfo?.sql?.toUpperCase().includes('UNIQUE')) {
+      const hasCompletedAt = tableInfo.sql.toLowerCase().includes('completed_at');
+      db.execSync('DROP TABLE IF EXISTS adventure_progress_new');
+      db.execSync(`CREATE TABLE adventure_progress_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        adventure_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'in_progress',
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        spins_count INTEGER DEFAULT 0
+      )`);
+      if (hasCompletedAt) {
+        db.execSync(
+          'INSERT INTO adventure_progress_new (id, adventure_id, status, started_at, completed_at, spins_count) ' +
+          'SELECT id, adventure_id, status, started_at, completed_at, spins_count FROM adventure_progress'
+        );
+      } else {
+        db.execSync(
+          'INSERT INTO adventure_progress_new (id, adventure_id, status, started_at, spins_count) ' +
+          'SELECT id, adventure_id, status, started_at, spins_count FROM adventure_progress'
+        );
+      }
+      db.execSync('DROP TABLE adventure_progress');
+      db.execSync('ALTER TABLE adventure_progress_new RENAME TO adventure_progress');
+    }
+  } catch (e) {
+    console.error('[DB migration] failed:', e);
+  }
 
   seedMiniAdventures();
 }
@@ -67,7 +103,7 @@ function seedMiniAdventures() {
         '30 min',
         '???',
         'Wherever chaos takes you',
-        'Social Chaos',
+        'Chaos',
         'social_chaos',
       ]
     );
@@ -91,6 +127,7 @@ function seedMiniAdventures() {
       ]
     );
   }
+
 }
 
 export function getMiniAdventuresByMode(modeType) {
@@ -103,31 +140,42 @@ export function getAvailableAdventuresByMode(modeType) {
   return db.getAllSync(`
     SELECT ma.*
     FROM mini_adventures ma
-    LEFT JOIN adventure_progress ap ON ap.adventure_id = ma.id
-    WHERE ma.mode_type = ? AND (ap.status IS NULL OR ap.status != 'completed')
+    WHERE ma.mode_type = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM adventure_progress ap
+        WHERE ap.adventure_id = ma.id AND ap.status = 'in_progress'
+      )
   `, [modeType]);
 }
 
 export function getCompletedAdventures() {
   if (!db) return [];
-  return db.getAllSync(`
-    SELECT ma.*, ap.started_at, ap.spins_count
-    FROM adventure_progress ap
-    JOIN mini_adventures ma ON ma.id = ap.adventure_id
-    WHERE ap.status = 'completed'
-    ORDER BY ap.started_at DESC
-  `);
+  try {
+    return db.getAllSync(
+      'SELECT ma.*, ap.id AS progress_id, ap.started_at, ap.completed_at, ap.spins_count ' +
+      'FROM adventure_progress ap ' +
+      'JOIN mini_adventures ma ON ma.id = ap.adventure_id ' +
+      "WHERE ap.status = 'completed' " +
+      'ORDER BY ap.completed_at DESC'
+    );
+  } catch (e) {
+    console.error('[DB] getCompletedAdventures failed:', e);
+    return [];
+  }
 }
 
 export function getAdventureProgress(adventureId) {
   if (!db) return null;
-  return db.getFirstSync('SELECT * FROM adventure_progress WHERE adventure_id = ?', [adventureId]);
+  return db.getFirstSync(
+    "SELECT * FROM adventure_progress WHERE adventure_id = ? AND status = 'in_progress' LIMIT 1",
+    [adventureId]
+  );
 }
 
 export function startAdventure(adventureId) {
   if (!db) return;
   db.runSync(
-    `INSERT OR REPLACE INTO adventure_progress (adventure_id, status, started_at, spins_count)
+    `INSERT INTO adventure_progress (adventure_id, status, started_at, spins_count)
      VALUES (?, 'in_progress', ?, 0)`,
     [adventureId, Date.now()]
   );
@@ -136,7 +184,7 @@ export function startAdventure(adventureId) {
 export function incrementSpins(adventureId) {
   if (!db) return;
   db.runSync(
-    'UPDATE adventure_progress SET spins_count = spins_count + 1 WHERE adventure_id = ?',
+    "UPDATE adventure_progress SET spins_count = spins_count + 1 WHERE adventure_id = ? AND status = 'in_progress'",
     [adventureId]
   );
 }
@@ -144,22 +192,25 @@ export function incrementSpins(adventureId) {
 export function completeAdventure(adventureId) {
   if (!db) return;
   db.runSync(
-    "UPDATE adventure_progress SET status = 'completed' WHERE adventure_id = ?",
-    [adventureId]
+    "UPDATE adventure_progress SET status = 'completed', completed_at = ? WHERE adventure_id = ? AND status = 'in_progress'",
+    [Date.now(), adventureId]
   );
 }
 
 export function expireAdventure(adventureId) {
   if (!db) return;
   db.runSync(
-    "UPDATE adventure_progress SET status = 'expired' WHERE adventure_id = ?",
+    "UPDATE adventure_progress SET status = 'expired' WHERE adventure_id = ? AND status = 'in_progress'",
     [adventureId]
   );
 }
 
 export function resetAdventure(adventureId) {
   if (!db) return;
-  db.runSync('DELETE FROM adventure_progress WHERE adventure_id = ?', [adventureId]);
+  db.runSync(
+    "DELETE FROM adventure_progress WHERE adventure_id = ? AND status = 'in_progress'",
+    [adventureId]
+  );
 }
 
 export function saveNaturePhoto(uri, isPlant, plantName) {

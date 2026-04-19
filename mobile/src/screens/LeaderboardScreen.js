@@ -86,7 +86,7 @@ function CompletedCard({ adventure }) {
         </View>
         <Text style={styles.completedTitle}>{adventure.title}</Text>
         <Text style={styles.completedTag}>{adventure.tag}</Text>
-        <Text style={styles.completedDate}>Completed {formatDate(adventure.started_at)}</Text>
+        <Text style={styles.completedDate}>Completed {formatDate(adventure.completed_at ?? adventure.started_at)}</Text>
       </View>
       <View style={styles.checkBadge}>
         <Text style={styles.checkIcon}>✓</Text>
@@ -97,42 +97,50 @@ function CompletedCard({ adventure }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function LeaderboardScreen() {
-  const [tab, setTab]                   = useState('rankings'); // 'rankings' | 'completed'
-  const [players, setPlayers]           = useState([]);
-  const [userScore, setUserScore]       = useState(0);
-  const [userRank, setUserRank]         = useState(null);
-  const [completed, setCompleted]       = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [refreshing, setRefreshing]     = useState(false);
+  const [tab, setTab]               = useState('rankings');
+  const [players, setPlayers]       = useState([]);
+  const [userScore, setUserScore]   = useState(0);
+  const [userRank, setUserRank]     = useState(null);
+  const [completed, setCompleted]   = useState([]);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
+  const loadCompleted = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      try {
+        const rows = getCompletedAdventures();
+        console.log('[Leaderboard] completed adventures:', rows.length, rows);
+        setCompleted(rows);
+      } catch (e) {
+        console.error('[Leaderboard] loadCompleted failed:', e);
+      }
+    }
+  }, []);
+
+  const loadRankings = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const [remote, local] = await Promise.all([fetchLeaderboard(), getUserScore()]);
       setUserScore(local);
-
       const withUser = [...remote, { id: 'me', name: 'You', avatar: 'fox', score: local, isYou: true }]
         .sort((a, b) => b.score - a.score)
         .map((p, i) => ({ ...p, rank: i + 1 }));
-
       setPlayers(withUser);
-      const me = withUser.find(p => p.id === 'me');
-      setUserRank(me?.rank ?? null);
-
-      if (Platform.OS !== 'web') {
-        setCompleted(getCompletedAdventures());
-      }
+      setUserRank(withUser.find(p => p.id === 'me')?.rank ?? null);
     } finally {
-      setLoading(false);
+      setInitialLoad(false);
       setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    loadCompleted();
+    loadRankings();
+  }, [loadCompleted, loadRankings]));
 
   const topThree = players.slice(0, 3);
 
-  if (loading) {
+  if (initialLoad) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#C87941" />
@@ -146,7 +154,7 @@ export default function LeaderboardScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#C87941" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { loadCompleted(); loadRankings(true); }} tintColor="#C87941" />}
       >
         {/* Dark header */}
         <LinearGradient colors={['#2C1F14', '#3B2A1A']} style={styles.header}>
@@ -227,7 +235,7 @@ export default function LeaderboardScreen() {
                 <Text style={styles.emptyDesc}>Complete a micro-adventure and it will appear here.</Text>
               </View>
             ) : (
-              completed.map((a) => <CompletedCard key={a.id + a.started_at} adventure={a} />)
+              completed.map((a) => <CompletedCard key={a.progress_id} adventure={a} />)
             )}
           </View>
         )}

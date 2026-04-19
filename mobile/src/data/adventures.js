@@ -11,7 +11,7 @@ export const PENNY_HIKE = {
   duration: '30 min',
   distance: '???',
   location: 'Wherever chaos takes you',
-  tag: 'Social Chaos',
+  tag: 'Chaos',
   img: require('../../assets/scene-campfire.jpg'),
   hero: require('../../assets/scene-campfire.jpg'),
   sections: [

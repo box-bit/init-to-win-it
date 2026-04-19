@@ -156,14 +156,15 @@ export default function FindNatureScreen({ route, navigation }) {
       setStartedAt(progress.started_at ?? null);
     } else {
       const progress = getAdventureProgress('find-the-nature');
-      setPhotos(getNaturePhotos());
-      if (!progress) { setStatus('idle'); return; }
-      if (progress.status === 'in_progress' && Date.now() - progress.started_at > TWO_HOURS_MS) {
+      if (!progress) { setPhotos([]); setStatus('idle'); return; }
+      if (Date.now() - progress.started_at > TWO_HOURS_MS) {
         expireAdventure('find-the-nature');
+        setPhotos(getNaturePhotos());
         setStatus('expired');
         return;
       }
-      setStatus(progress.status);
+      setPhotos(getNaturePhotos());
+      setStatus('in_progress');
       setStartedAt(progress.started_at ?? null);
     }
   }, []);
@@ -197,8 +198,14 @@ export default function FindNatureScreen({ route, navigation }) {
   // ── Start ─────────────────────────────────────────────────────────────────
   async function handleStart() {
     const now = Date.now();
-    if (Platform.OS !== 'web') startAdventure('find-the-nature');
-    else await webSaveProgress({ status: 'in_progress', started_at: now });
+    if (Platform.OS !== 'web') {
+      clearNaturePhotos();
+      startAdventure('find-the-nature');
+    } else {
+      await AsyncStorage.removeItem(WEB_PHOTOS_KEY);
+      await webSaveProgress({ status: 'in_progress', started_at: now });
+    }
+    setPhotos([]);
     setStartedAt(now);
     setStatus('in_progress');
   }

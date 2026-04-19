@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './src/screens/HomeScreen';
 import AdventureDetailScreen from './src/screens/AdventureDetailScreen';
@@ -39,8 +40,16 @@ export default function App() {
   const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
-    initDB();
-    setDbReady(true);
+    async function setup() {
+      initDB();
+      const resetDone = await AsyncStorage.getItem('score_reset_v1');
+      if (!resetDone) {
+        await AsyncStorage.setItem('user_total_score', '0');
+        await AsyncStorage.setItem('score_reset_v1', '1');
+      }
+      setDbReady(true);
+    }
+    setup();
   }, []);
 
   if (!dbReady) return null;

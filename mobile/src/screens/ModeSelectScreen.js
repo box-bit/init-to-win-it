@@ -11,7 +11,6 @@ const { width } = Dimensions.get('window');
 const AVATARS = [
   {
     id: 'urban_explore',
-    name: 'Fox',
     title: 'Urban Legend',
     vibe: 'Curious. Clever.\nHidden corners at golden hour.',
     img: require('../../assets/avatar-fox.png'),
@@ -19,7 +18,6 @@ const AVATARS = [
   },
   {
     id: 'survivalist',
-    name: 'Bear',
     title: 'Survivalist',
     vibe: 'Calm. Strong.\nPine forests and quiet fires.',
     img: require('../../assets/avatar-bear.png'),
@@ -27,8 +25,7 @@ const AVATARS = [
   },
   {
     id: 'social_chaos',
-    name: 'Raccoon',
-    title: 'Social Chaos',
+    title: 'Chaos',
     vibe: 'Playful. Spontaneous.\nAdventures with the crew.',
     img: require('../../assets/avatar-raccoon.png'),
     color: '#4A6B8A',
@@ -76,7 +73,6 @@ export default function ModeSelectScreen({ onSelect }) {
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={[styles.cardTitle, isSel && { color: '#C87941' }]}>{a.title}</Text>
-                  <Text style={styles.cardName}>{a.name}</Text>
                   <Text style={styles.cardVibe}>{a.vibe}</Text>
                 </View>
               </Pressable>
@@ -126,8 +122,7 @@ const styles = StyleSheet.create({
   imgWrapper: { borderRadius: 16, overflow: 'hidden', width: 72, height: 72, backgroundColor: 'rgba(212,192,158,0.4)' },
   avatar: { width: '100%', height: '100%' },
   cardBody: { paddingHorizontal: 14, paddingVertical: 2, flex: 1 },
-  cardTitle: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#D4A96A', fontWeight: '700' },
-  cardName: { fontSize: 22, fontWeight: '700', color: '#2C1F14', marginTop: 2 },
+  cardTitle: { fontSize: 22, fontWeight: '800', color: '#D4A96A', textTransform: 'uppercase', letterSpacing: 1 },
   cardVibe: { fontSize: 13, color: 'rgba(44,31,20,0.65)', lineHeight: 18, marginTop: 4 },
 
   footer: { paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12 },

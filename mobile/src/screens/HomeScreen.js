@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
@@ -7,7 +8,7 @@ import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
 import { getAvailableAdventuresByMode } from '../db/database';
 
 const MINI_ADVENTURE_ASSETS = {
-  'penny-hike': { img: require('../../assets/scene-campfire.jpg') },
+  'penny-hike':      { img: require('../../assets/scene-campfire.jpg') },
   'find-the-nature': { img: require('../../assets/scene-forest.jpg') },
 };
 
@@ -29,7 +30,7 @@ export default function HomeScreen({ selectedMode, navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [dbMiniAdventures, setDbMiniAdventures] = useState([]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!selectedMode) return;
     if (Platform.OS === 'web') {
       const WEB_MINI_ADVENTURES = [
@@ -42,10 +43,10 @@ export default function HomeScreen({ selectedMode, navigation }) {
     } else {
       setDbMiniAdventures(getAvailableAdventuresByMode(selectedMode.id));
     }
-  }, [selectedMode]);
+  }, [selectedMode]));
 
   const avatarImg = selectedMode ? AVATAR_IMGS[selectedMode.id] : AVATAR_IMGS.urban_explore;
-  const guideName = selectedMode?.name ?? 'Fox';
+  const guideName = selectedMode?.title ?? 'Explorer';
   const dayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long' }) + ' · Rzeszów';
 
   return (
