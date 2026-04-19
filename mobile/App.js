@@ -13,12 +13,23 @@ import AdventureCompleteScreen from './src/screens/AdventureCompleteScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
 import ModeSelectScreen from './src/screens/ModeSelectScreen';
 import CustomTabBar from './src/components/CustomTabBar';
 import { initDB } from './src/db/database';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
+
+function ProfileNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+    </ProfileStack.Navigator>
+  );
+}
 
 function HomeNavigator({ selectedMode }) {
   return (
@@ -74,7 +85,7 @@ export default function App() {
           </Tab.Screen>
           <Tab.Screen name="Explore" component={ExploreScreen} />
           <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
+          <Tab.Screen name="Profile" component={ProfileNavigator} />
         </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

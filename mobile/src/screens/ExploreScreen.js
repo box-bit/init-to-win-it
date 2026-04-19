@@ -1,104 +1,127 @@
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
+  View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { PENNY_HIKE, FIND_NATURE, ADVENTURE_POINTS } from '../data/adventures';
+import { getAllMiniAdventures } from '../db/database';
 
-const { width } = Dimensions.get('window');
-
-const ADVENTURE = {
-  title: 'Sunset over Wisłok',
-  summary: 'A short walk to one of Rzeszów\'s quietest river benches. The kind of pause that resets a whole week.',
-  duration: '30 min',
-  distance: '1.4 km',
-  location: 'Wisłok riverside',
-  tag: 'Golden hour',
-  hero: require('../../assets/scene-river.jpg'),
-  sections: [
-    {
-      emoji: '🔭',
-      label: "What you'll do",
-      body: "Walk the riverside path past the old footbridge. Find the bench under the willow. Stay through one full color change of the sky.",
-    },
-    {
-      emoji: '🍃',
-      label: 'Focus',
-      body: 'Light movement · Quiet observation · Mood reset',
-      chips: ['Exploration', 'Relaxation'],
-    },
-    {
-      emoji: '🎒',
-      label: 'What to bring',
-      body: 'Comfortable shoes, a light jacket, a thermos if it\'s cold. Phone on do-not-disturb.',
-    },
-    {
-      emoji: '🛡',
-      label: 'Stay safe',
-      body: "Tell someone where you're going. Stick to the lit paths after sunset. Bring a friend if it's your first time.",
-    },
-  ],
+const MINI_ADVENTURE_ASSETS = {
+  'penny-hike':      { img: require('../../assets/scene-campfire.jpg') },
+  'find-the-nature': { img: require('../../assets/scene-forest.jpg') },
 };
 
-export default function ExploreScreen() {
+const FILTERS = ['All', 'Forest', 'Riverside', 'Viewpoint', 'Sunset'];
+
+const TAG_FILTER_MAP = {
+  Forest: ['survivalist', 'nature'],
+  Riverside: [],
+  Viewpoint: [],
+  Sunset: [],
+};
+
+function getScreenForAdventure(adventureId) {
+  if (adventureId === 'penny-hike') return 'PennyHike';
+  if (adventureId === 'find-the-nature') return 'FindNature';
+  return 'PennyHike';
+}
+
+const WEB_ALL_ADVENTURES = [
+  { id: 'penny-hike', title: PENNY_HIKE.title, description: PENNY_HIKE.desc,
+    duration: PENNY_HIKE.duration, tag: PENNY_HIKE.tag, mode_type: 'social_chaos' },
+  { id: 'find-the-nature', title: FIND_NATURE.title, description: FIND_NATURE.desc,
+    duration: FIND_NATURE.duration, tag: FIND_NATURE.tag, mode_type: 'survivalist' },
+];
+
+export default function ExploreScreen({ navigation }) {
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [adventures, setAdventures] = useState([]);
+
+  useFocusEffect(useCallback(() => {
+    if (Platform.OS === 'web') {
+      setAdventures(WEB_ALL_ADVENTURES);
+    } else {
+      setAdventures(getAllMiniAdventures());
+    }
+  }, []));
+
+  const filtered = activeFilter === 'All'
+    ? adventures
+    : adventures.filter((a) => {
+        const modes = TAG_FILTER_MAP[activeFilter] ?? [];
+        return modes.includes(a.mode_type) || a.tag?.toLowerCase() === activeFilter.toLowerCase();
+      });
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Image source={ADVENTURE.hero} style={styles.heroImg} resizeMode="cover" />
-          <LinearGradient
-            colors={['rgba(44,31,20,0.45)', 'transparent', '#F5EBD7']}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.heroTopBar}>
-            <View style={styles.heroBtn}><Text style={styles.heroBtnIcon}>♡</Text></View>
-          </View>
-          <View style={styles.heroTag}>
-            <Text style={styles.heroTagText}>🧭  {ADVENTURE.tag}</Text>
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>🔍  Explore</Text>
+          <Text style={styles.headerSub}>All mini-adventures</Text>
         </View>
 
-        {/* Title + meta */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.title}>{ADVENTURE.title}</Text>
-          <Text style={styles.summary}>{ADVENTURE.summary}</Text>
-          <View style={styles.meta}>
-            <Text style={styles.metaItem}>⏱  {ADVENTURE.duration}</Text>
-            <Text style={styles.metaItem}>📍  {ADVENTURE.distance}</Text>
-            <Text style={styles.metaItem}>🗺  {ADVENTURE.location}</Text>
-          </View>
+        {/* Filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setActiveFilter(f)}
+              style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Adventures list */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{filtered.length} adventure{filtered.length !== 1 ? 's' : ''}</Text>
         </View>
 
-        {/* Sections */}
-        {ADVENTURE.sections.map((s) => (
-          <View key={s.label} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}><Text style={{ fontSize: 18 }}>{s.emoji}</Text></View>
-              <Text style={styles.cardLabel}>{s.label}</Text>
-            </View>
-            <Text style={styles.cardBody}>{s.body}</Text>
-            {s.chips && (
-              <View style={styles.chips}>
-                {s.chips.map((c) => (
-                  <View key={c} style={styles.chip}>
-                    <Text style={styles.chipText}>{c}</Text>
-                  </View>
-                ))}
+        {filtered.length === 0 && (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No adventures match this filter.</Text>
+          </View>
+        )}
+
+        {filtered.map((a) => {
+          const assets = MINI_ADVENTURE_ASSETS[a.id] ?? MINI_ADVENTURE_ASSETS['penny-hike'];
+          const screenName = getScreenForAdventure(a.id);
+          return (
+            <TouchableOpacity
+              key={a.id}
+              style={[styles.card, styles.miniCard]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Home', { screen: screenName })}
+            >
+              <Image source={assets.img} style={styles.cardImg} resizeMode="cover" />
+              <View style={styles.cardBody}>
+                <View style={styles.cardTagRow}>
+                  <Text style={[styles.cardTag, { color: '#3D6142' }]}>{a.tag}</Text>
+                  {ADVENTURE_POINTS[a.id] && (
+                    <View style={styles.ptsBadge}>
+                      <Text style={styles.ptsBadgeText}>+{ADVENTURE_POINTS[a.id]} pts</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
+                <Text style={styles.cardDesc} numberOfLines={2}>{a.description}</Text>
+                <View style={styles.cardMeta}>
+                  <Text style={styles.cardMetaText}>⏱ {a.duration}</Text>
+                  <Text style={styles.cardMetaText}>📍 {a.distance ?? '???'}</Text>
+                </View>
               </View>
-            )}
-          </View>
-        ))}
+              <View style={[styles.cardArrow, { backgroundColor: '#3D6142' }]}>
+                <Text style={styles.cardArrowText}>›</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* Sticky CTA */}
-      <View style={styles.cta}>
-        <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
-          <Text style={styles.ctaBtnText}>Start adventure</Text>
-          <Text style={styles.ctaBtnMeta}>{ADVENTURE.duration}</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -107,31 +130,34 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5EBD7' },
   scroll: { paddingBottom: 16 },
 
-  hero: { height: 280, position: 'relative' },
-  heroImg: { width: '100%', height: '100%' },
-  heroTopBar: { position: 'absolute', top: 56, right: 20, flexDirection: 'row', gap: 10 },
-  heroBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(245,235,215,0.9)', alignItems: 'center', justifyContent: 'center' },
-  heroBtnIcon: { fontSize: 20, color: '#C87941' },
-  heroTag: { position: 'absolute', bottom: 24, left: 20, backgroundColor: '#D4A96A', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
-  heroTagText: { fontSize: 11, fontWeight: '700', color: '#2C1F14', letterSpacing: 1.5, textTransform: 'uppercase' },
+  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#2C1F14' },
+  headerSub: { fontSize: 13, color: '#7A6651', marginTop: 2 },
 
-  titleBlock: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: '#2C1F14', lineHeight: 32 },
-  summary: { fontSize: 13.5, color: '#7A6651', lineHeight: 20, marginTop: 8 },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
-  metaItem: { fontSize: 12, color: 'rgba(44,31,20,0.7)' },
+  filtersRow: { paddingHorizontal: 20, gap: 8, marginTop: 12, paddingBottom: 4 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(44,31,20,0.12)' },
+  filterChipActive: { backgroundColor: '#2C1F14', borderColor: '#2C1F14' },
+  filterText: { fontSize: 12, fontWeight: '600', color: '#2C1F14' },
+  filterTextActive: { color: '#F5EBD7' },
 
-  card: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  cardIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0E6D3', alignItems: 'center', justifyContent: 'center' },
-  cardLabel: { fontSize: 13, fontWeight: '700', color: '#2C1F14', letterSpacing: 1, textTransform: 'uppercase' },
-  cardBody: { fontSize: 13, color: 'rgba(44,31,20,0.75)', lineHeight: 20 },
-  chips: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  chip: { backgroundColor: 'rgba(61,97,66,0.1)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  chipText: { fontSize: 11, fontWeight: '700', color: '#3D6142', letterSpacing: 1, textTransform: 'uppercase' },
+  sectionHeader: { paddingHorizontal: 20, marginTop: 18, marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#7A6651', textTransform: 'uppercase', letterSpacing: 1 },
 
-  cta: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingTop: 12, backgroundColor: 'transparent' },
-  ctaBtn: { backgroundColor: '#C87941', borderRadius: 18, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
-  ctaBtnText: { fontSize: 17, fontWeight: '700', color: '#F5EBD7' },
-  ctaBtnMeta: { fontSize: 12, fontWeight: '600', color: 'rgba(245,235,215,0.8)', letterSpacing: 1.5, textTransform: 'uppercase' },
+  emptyCard: { marginHorizontal: 20, padding: 24, backgroundColor: '#fff', borderRadius: 22, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)' },
+  emptyText: { fontSize: 13, color: '#7A6651', textAlign: 'center' },
+
+  card: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fff', borderRadius: 22, flexDirection: 'row', alignItems: 'center', padding: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: 'rgba(44,31,20,0.07)' },
+  miniCard: { borderColor: 'rgba(61,97,66,0.2)', borderWidth: 1.5 },
+  cardImg: { width: 76, height: 76, borderRadius: 16 },
+  cardBody: { flex: 1, paddingHorizontal: 12, paddingVertical: 2 },
+  cardTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  cardTag: { fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#C87941', fontWeight: '700' },
+  ptsBadge: { backgroundColor: '#D4A96A', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  ptsBadgeText: { fontSize: 10, fontWeight: '800', color: '#2C1F14' },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#2C1F14', marginTop: 2 },
+  cardDesc: { fontSize: 11.5, color: '#7A6651', lineHeight: 16, marginTop: 3 },
+  cardMeta: { flexDirection: 'row', gap: 12, marginTop: 6 },
+  cardMetaText: { fontSize: 11, color: 'rgba(44,31,20,0.6)' },
+  cardArrow: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#2C1F14', alignItems: 'center', justifyContent: 'center' },
+  cardArrowText: { fontSize: 20, color: '#F5EBD7', lineHeight: 24 },
 });

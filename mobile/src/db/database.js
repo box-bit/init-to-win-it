@@ -130,6 +130,11 @@ function seedMiniAdventures() {
 
 }
 
+export function getAllMiniAdventures() {
+  if (!db) return [];
+  return db.getAllSync('SELECT * FROM mini_adventures');
+}
+
 export function getMiniAdventuresByMode(modeType) {
   if (!db) return [];
   return db.getAllSync('SELECT * FROM mini_adventures WHERE mode_type = ?', [modeType]);

@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TABS = [
   { name: 'Home',        emoji: '🏠', label: 'Home'  },
-  { name: 'Explore',     emoji: '🗺',  label: 'Map'   },
+  { name: 'Explore',     emoji: '🔍', label: 'Explore' },
   { name: 'Leaderboard', emoji: '🏆', label: 'Board' },
   { name: 'Profile',     emoji: '👤', label: 'You'   },
 ];
